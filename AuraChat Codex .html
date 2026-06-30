@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Gemini AuraChat - Pro Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension/lib/index.umd.js"></script>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
+
+    <style>
+        /* --- CORE VARIABLES --- */
+        :root {
+            --bg-app: #09090b;
+            --bg-sidebar: #121214;
+            --bg-input: #18181b;
+            --bg-message-user: #27272a;
+            --border-color: #27272a;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --accent-color: #fafafa;
+            --active-color: #60a5fa;
+            /* Blue for active states */
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            width: 280px;
+            background-color: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            flex-shrink: 0;
+            transition: margin-left 0.3s ease;
+            z-index: 20;
+        }
+
+        #sidebar.hidden {
+            margin-left: -280px;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #delete-all-btn {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        #delete-all-btn:hover {
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+
+        #new-chat-btn {
+            padding: 12px;
+            background-color: var(--text-primary);
+            color: var(--bg-app);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        #new-chat-btn:hover {
+            opacity: 0.9;
+        }
+
+        #history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .history-item {
+            padding: 12px 35px 12px 12px;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-secondary);
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover {
+            background-color: #27272a;
+            color: var(--text-primary);
+        }
+
+        .history-item.active {
+            background-color: #27272a;
+            color: var(--text-primary);
+            font-weight: 500;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        /* Styling for Temporary (Unsaved) Sessions */
+        .history-item.temp-session {
+            font-style: italic;
+            opacity: 0.7;
+        }
+
+        .history-item.temp-session::after {
+            content: '*';
+            color: var(--warning-color);
+            margin-left: 4px;
+            font-style: normal;
+        }
+
+        .delete-chat {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #52525b;
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 4px 8px;
+            display: none;
+            z-index: 2;
+        }
+
+        .history-item:hover .delete-chat {
+            display: block;
+        }
+
+        .delete-chat:hover {
+            color: var(--danger-color);
+        }
+
+        /* --- MAIN AREA --- */
+        #main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-app);
+            position: relative;
+            width: 100%;
+        }
+
+        #chat-header {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            height: 40px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #toggle-sidebar {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.5em;
+            padding: 0;
+        }
+
+        /* Save & Settings Controls */
+        #settings-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        #save-chat-btn {
+            background-color: #27272a;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: none;
+            /* Hidden by default */
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        #save-chat-btn:hover {
+            background-color: var(--accent-color);
+            color: black;
+            border-color: var(--accent-color);
+        }
+
+        #temp-badge {
+            font-size: 0.75rem;
+            color: var(--warning-color);
+            border: 1px solid var(--warning-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: none;
+            user-select: none;
+        }
+
+        #settings-panel {
+            background: var(--bg-input);
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: none;
+        }
+
+        #settings-panel.visible {
+            display: block;
+        }
+
+        #system-instruction {
+            width: 100%;
+            background: #27272a;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px;
+            border-radius: 6px;
+            resize: vertical;
+            min-height: 60px;
+            font-family: inherit;
+            margin-top: 5px;
+        }
+
+        /* --- MESSAGES --- */
+        #chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .user-message {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .user-content {
+            background-color: var(--bg-message-user);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 18px;
+            border-bottom-right-radius: 4px;
+            max-width: 85%;
+            position: relative;
+        }
+
+        /* RETRY BUTTON STYLES */
+        .retry-msg-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 4px 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid #3f3f46;
+            color: #a1a1aa;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            float: right;
+            /* Align to right of bubble */
+            clear: both;
+        }
+
+        .retry-msg-btn:hover {
+            background: var(--active-color);
+            color: black;
+            border-color: var(--active-color);
+        }
+
+        .bot-message {
+            display: flex;
+            justify-content: flex-start;
+            flex-direction: column;
+        }
+
+        .bot-content {
+            color: #d4d4d8;
+            width: 100%;
+        }
+
+        /* Error Banner */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger-color);
+            color: #fca5a5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        /* Markdown Styles */
+        .bot-content code {
+            background-color: #27272a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "Courier New", monospace;
+            color: #f472b6;
+            font-size: 0.9em;
+        }
+
+        .bot-content pre {
+            position: relative;
+            /* Required for copy button positioning */
+            background-color: #18181b;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .bot-content p {
+            margin-top: 0;
+        }
+
+        /* NEW: Copy Code Button */
+        .copy-code-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: #27272a;
+            border: 1px solid #3f3f46;
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            opacity: 0;
+            /* Hidden by default */
+            transition: opacity 0.2s, background-color 0.2s;
+            -webkit-transition: opacity 0.2s, background-color 0.2s;
+        }
+
+        /* NEW: Preview HTML Button */
+        .preview-html-btn {
+            position: absolute;
+            top: 8px;
+            right: 60px;
+            /* Position next to the copy button */
+            background-color: #27272a;
+            border: 1px solid #3f3f46;
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s, background-color 0.2s;
+            -webkit-transition: opacity 0.2s, background-color 0.2s;
+        }
+
+        .bot-content pre:hover .copy-code-btn,
+        .bot-content pre:hover .preview-html-btn {
+            opacity: 1;
+            /* Show on hover */
+        }
+
+        .copy-code-btn:hover,
+        .preview-html-btn:hover {
+            background-color: #3f3f46;
+            color: white;
+        }
+
+        /* Grounding / Source Chips */
+        .grounding-sources {
+            font-size: 0.8rem;
+            color: #a1a1aa;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #27272a;
+        }
+
+        .source-link {
+            color: #60a5fa;
+            text-decoration: none;
+            margin-right: 8px;
+            display: inline-block;
+        }
+
+        .source-link:hover {
+            text-decoration: underline;
+        }
+
+        /* --- INPUT AREA --- */
+        #input-wrapper {
+            width: 100%;
+            background-color: var(--bg-app);
+            padding: 1rem 2rem 2rem 2rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Templates */
+        #templates-container {
+            max-width: 850px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            width: 100%;
+            padding-bottom: 5px;
+        }
+
+        .template-chip {
+            background: #27272a;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .template-chip:hover {
+            background: #3f3f46;
+            color: white;
+            border-color: #52525b;
+        }
+
+        #input-container {
+            max-width: 850px;
+            width: 100%;
+            margin: 0 auto;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+
+        #input-container:focus-within {
+            border-color: #52525b;
+        }
+
+        /* Drag Overlay */
+        #drag-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(9, 9, 11, 0.9);
+            border: 2px dashed var(--accent-color);
+            border-radius: 16px;
+            z-index: 50;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            pointer-events: none;
+            /* Let events fall through to container handlers */
+        }
+
+        body.dragging #drag-overlay {
+            display: flex;
+        }
+
+        #files-preview-area {
+            display: none;
+            padding: 10px 15px;
+            gap: 10px;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .preview-item {
+            display: inline-flex;
+            position: relative;
+            border: 1px solid #3f3f46;
+            border-radius: 6px;
+            overflow: hidden;
+            height: 50px;
+            width: 50px;
+            flex-shrink: 0;
+            background: #27272a;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-remove {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .preview-item:hover .preview-remove {
+            opacity: 1;
+        }
+
+        #user-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 15px;
+            font-size: 1rem;
+            resize: none;
+            min-height: 50px;
+            max-height: 200px;
+            outline: none;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        #input-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px 10px 10px;
+        }
+
+        .toolbar-left {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .toolbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            background-color: #27272a;
+            color: white;
+        }
+
+        .icon-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Active State for Buttons */
+        .icon-btn.active {
+            background-color: rgba(96, 165, 250, 0.2);
+            color: var(--active-color);
+        }
+
+        #send-button {
+            background-color: white;
+            color: black;
+            border-radius: 8px;
+            padding: 8px 12px;
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #send-button.active {
+            opacity: 1;
+            cursor: pointer;
+        }
+
+        /* Abort Style */
+        #send-button.abort {
+            background-color: var(--danger-color);
+            color: white;
+            opacity: 1;
+            cursor: pointer;
+        }
+
+        #send-button.abort svg {
+            fill: white;
+        }
+
+        /* Shared styling for Model Selector and Key Selector */
+        #model-selector,
+        #key-selector {
+            background-color: #27272a;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar {
+                position: absolute;
+                height: 100%;
+                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+                margin-left: -280px;
+            }
+
+            #sidebar.open {
+                margin-left: 0;
+            }
+
+            #input-wrapper {
+                padding: 1rem;
+            }
+        }
+
+        /* --- NEW: HTML PREVIEW MODAL --- */
+        #html-preview-modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        #html-preview-modal .modal-content {
+            background-color: var(--bg-sidebar);
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            width: 80%;
+            height: 80%;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #html-preview-modal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #html-preview-modal .modal-close {
+            color: var(--text-secondary);
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #html-preview-modal .modal-close:hover {
+            color: white;
+        }
+
+        #html-preview-modal #preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            margin-top: 15px;
+            background-color: white;
+            border-radius: 4px;
+        }
+
+        /* --- MODE TOGGLE --- */
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--active-color);
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #a855f7;
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px #a855f7;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .mode-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: color 0.3s;
+            user-select: none;
+        }
+
+        .mode-label.active {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <button id="delete-all-btn">⚠ Delete All Chats</button>
+            <button id="new-chat-btn"><span>+ New Chat</span></button>
+        </div>
+        <div id="history-list"></div>
+    </div>
+
+    <!-- Main Interface -->
+    <div id="main-container">
+        <div id="chat-header">
+            <div class="header-left">
+                <button id="toggle-sidebar">☰</button>
+                <span style="font-weight: 500; color: var(--text-primary);">Gemini Studio</span>
+            </div>
+
+            <!-- NEW: Mode Toggle -->
+            <div class="header-center">
+                <span class="mode-label active" id="gemini-label">Gemini</span>
+                <label class="switch">
+                    <input type="checkbox" id="mode-toggle">
+                    <span class="slider"></span>
+                </label>
+                <span class="mode-label" id="gemma-label">Gemma</span>
+            </div>
+
+            <div class="header-right">
+                <span id="temp-badge">Unsaved</span>
+                <button id="save-chat-btn">💾 Save Chat</button>
+                <button id="settings-toggle">⚙ System Settings</button>
+            </div>
+        </div>
+
+        <div id="settings-panel">
+            <div
+                style="margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid #3f3f46;">
+                <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 8px;">API
+                    Keys (AES-256 Encrypted):</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="password" id="api-key-1-input" placeholder="API Key 1"
+                        style="flex: 1; background: #27272a; border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: 6px; outline: none;">
+                    <input type="password" id="api-key-2-input" placeholder="API Key 2"
+                        style="flex: 1; background: #27272a; border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: 6px; outline: none;">
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="password" id="pin-input" placeholder="8-Digit PIN" maxlength="8"
+                        style="width: 120px; background: #27272a; border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: 6px; text-align: center; letter-spacing: 1px; outline: none;">
+                    <button id="save-keys-btn"
+                        style="background: var(--active-color); color: black; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.85rem;">Save
+                        & Encrypt</button>
+                    <button id="unlock-keys-btn"
+                        style="background: #27272a; color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Unlock</button>
+                    <span id="crypto-msg"
+                        style="font-size: 0.75rem; color: var(--warning-color); margin-left: auto;"></span>
+                </div>
+            </div>
+
+            <div id="system-instruction-container">
+                <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">System
+                    Instruction (Behavior):</label>
+                <textarea id="system-instruction"
+                    placeholder="E.g., You are a coding expert who only speaks in Python comments..."></textarea>
+                <div style="font-size: 0.75rem; color: #52525b; margin-top: 5px;">Changes apply to the next message sent.
+                </div>
+            </div>
+        </div>
+
+        <div id="chat-messages">
+            <!-- Messages go here -->
+        </div>
+
+        <div id="input-wrapper">
+            <!-- Prompt Templates -->
+            <div id="templates-container"></div>
+
+            <div id="input-container">
+                <!-- Drag Overlay -->
+                <div id="drag-overlay">Drop files here</div>
+
+                <!-- File Previews -->
+                <div id="files-preview-area"></div>
+
+                <!-- Text Input -->
+                <textarea id="user-input" placeholder="Message Gemini..." rows="1"></textarea>
+
+                <!-- Toolbar (Bottom) -->
+                <div id="input-toolbar">
+                    <div class="toolbar-left">
+                        <input type="file" id="file-input" multiple style="display: none;">
+
+                        <!-- Attachment Button -->
+                        <button class="icon-btn" id="attach-btn" title="Attach files">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z" />
+                            </svg>
+                        </button>
+
+                        <!-- URL Toggle Button -->
+                        <button class="icon-btn" id="url-toggle-btn" title="URL reading">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" />
+                            </svg>
+                        </button>
+
+                        <!-- NEW: Google Search Toggle -->
+                        <button class="icon-btn" id="google-search-btn" title="Google Search">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                            </svg>
+                        </button>
+
+                        <!-- NEW: Code Execution Toggle -->
+                        <button class="icon-btn" id="code-exec-btn" title="Math Engine">
+                            <svg viewBox="0 0 24 24">
+                                <path
+                                    d="M20,19V7H4V19H20M20,3A2,2 0 0,1 22,5V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V5C2,3.89 2.9,3 4,3H20M13,17V15H18V17H13M9.58,13L5.57,9H8.4L11.7,12.3C12.09,12.69 12.09,13.33 11.7,13.72L8.42,17H5.59L9.58,13Z" />
+                            </svg>
+                        </button>
+
+                        <!-- Thinking Toggle Buttons -->
+                        <button class="icon-btn" id="thinking-low-btn" title="Enable Low-Budget Thinking"
+                            style="font-weight: bold; font-size: 0.8rem;">
+                            T(L)
+                        </button>
+                        <button class="icon-btn" id="thinking-high-btn" title="Enable High-Budget Thinking"
+                            style="font-weight: bold; font-size: 0.8rem;">
+                            T(H)
+                        </button>
+                    </div>
+
+                    <div class="toolbar-right">
+                        <!-- Key Selector (NEW) -->
+                        <select id="key-selector">
+                            <option value="key1">API Key 1</option>
+                            <option value="key2">API Key 2</option>
+                        </select>
+
+                        <select id="model-selector">
+                            <option value="gemini-3.1-flash-lite-preview">Flash Lite 3.1</option>
+                            <option value="gemini-2.5-flash-lite">Flash Lite 2.5</option>
+                            <option value="gemini-2.5-flash" selected>Flash 2.5</option>
+                            <option value="gemini-2.5-pro">Pro 2.5</option>
+                            <option value="gemma-4-26b-a4b-it">Gemma 4 26B A4B IT</option>
+                        </select>
+
+                        <!-- Button serves as Send or Stop -->
+                        <button class="icon-btn" id="send-button" disabled>
+                            <svg class="send-icon" viewBox="0 0 24 24">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                            </svg>
+                            <svg class="stop-icon" viewBox="0 0 24 24" style="display:none">
+                                <path d="M6 6h12v12H6z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center; font-size: 0.75rem; color: #52525b; margin-top: 10px;">
+                Gemini can make mistakes. Check important info.
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: HTML PREVIEW MODAL -->
+    <div id="html-preview-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>HTML Preview</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <iframe id="preview-iframe" sandbox="allow-scripts"></iframe>
+        </div>
+    </div>
+
+    <!-- PIN Entry Modal -->
+    <div id="pin-modal"
+        style="display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); align-items: center; justify-content: center;">
+        <div
+            style="background-color: var(--bg-sidebar); padding: 25px; border: 1px solid var(--border-color); border-radius: 8px; text-align: center; width: 300px;">
+            <h3 style="margin-top: 0; color: var(--text-primary);">Unlock API Keys</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 20px;">Enter your 8-digit PIN to
+                decrypt keys.</p>
+            <input type="password" id="startup-pin" maxlength="8" placeholder="••••••••"
+                style="width: 100%; box-sizing: border-box; background: #27272a; border: 1px solid var(--border-color); color: white; padding: 12px; border-radius: 6px; text-align: center; letter-spacing: 4px; font-size: 1.2rem; margin-bottom: 15px; outline: none;">
+            <button id="startup-unlock-btn"
+                style="background: var(--active-color); color: black; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1rem;">Unlock</button>
+            <div id="startup-crypto-msg"
+                style="color: var(--danger-color); font-size: 0.8rem; margin-top: 10px; min-height: 15px;"></div>
+            <button id="startup-close-btn"
+                style="background: transparent; color: var(--text-secondary); border: none; margin-top: 15px; cursor: pointer; font-size: 0.8rem;">Continue
+                without unlocking</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+        // Initialize marked-katex-extension
+        if (window.markedKatex) {
+            marked.use(window.markedKatex({ throwOnError: false, nonStandard: true }));
+        }
+
+        // --- HELPERS ---
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag]));
+        }
+
+        const domPurifyConfig = {
+            ADD_TAGS: ['math', 'menclose', 'merror', 'mfrac', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msubsup', 'msup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover', 'semantics', 'annotation', 'annotation-xml'],
+            ADD_ATTR: ['target', 'class', 'style', 'display', 'xmlns']
+        };
+
+        // --- MODELS ---
+        const GEMINI_MODELS = [
+            { value: "gemini-3.1-flash-lite-preview", label: "Flash Lite 3.1" },
+            { value: "gemini-2.5-flash-lite", label: "Flash Lite 2.5" },
+            { value: "gemini-2.5-flash", label: "Flash 2.5" },
+            { value: "gemini-2.5-pro", label: "Pro 2.5" },
+            { value: "gemma-4-26b-a4b-it", label: "Gemma 4 26B A4B IT" }
+        ];
+
+        const GEMMA_MODELS = [
+            { value: "gemma-3-1b-it", label: "Gemma 3 1B IT" },
+            { value: "gemma-3-4b-it", label: "Gemma 3 4B IT" },
+            { value: "gemma-3-12b-it", label: "Gemma 3 12B IT" },
+            { value: "gemma-3-27b-it", label: "Gemma 3 27B IT" },
+            { value: "gemma-3n-e2b-it", label: "Gemma 3N E2B IT" },
+            { value: "gemma-3n-e4b-it", label: "Gemma 3N E4B IT" }
+        ];
+
+        // --- STATE & CRYPTO ---
+        let decryptedKeys = { key1: "", key2: "" };
+        let activePin = null;
+
+        const cryptoParams = { name: "AES-GCM", length: 256 };
+
+        async function getCryptoKey(pin, salt) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw", enc.encode(pin), { name: "PBKDF2" }, false, ["deriveKey"]
+            );
+            return await crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+                keyMaterial,
+                cryptoParams,
+                false,
+                ["encrypt", "decrypt"]
+            );
+        }
+
+        async function encryptData(pin, dataObj) {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await getCryptoKey(pin, salt);
+            const enc = new TextEncoder();
+            const encrypted = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv }, key, enc.encode(JSON.stringify(dataObj))
+            );
+            return {
+                salt: Array.from(salt),
+                iv: Array.from(iv),
+                data: Array.from(new Uint8Array(encrypted))
+            };
+        }
+
+        async function decryptData(pin, encryptedObj) {
+            try {
+                const salt = new Uint8Array(encryptedObj.salt);
+                const iv = new Uint8Array(encryptedObj.iv);
+                const data = new Uint8Array(encryptedObj.data);
+                const key = await getCryptoKey(pin, salt);
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: iv }, key, data
+                );
+                const dec = new TextDecoder();
+                return JSON.parse(dec.decode(decrypted));
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // --- TEMPLATES ---
+        const PROMPT_TEMPLATES = [
+            { label: "Summarize", text: "Summarize the key points of the following text in a concise list:" },
+            { label: "Fix Code", text: "Analyze this code for bugs and suggest improvements:\n```\n\n```" },
+            { label: "Explain Like I'm 5", text: "Explain this concept simply, as if I were a 5-year-old:" },
+            { label: "Email Draft", text: "Draft a professional email regarding:" }
+        ];
+
+        // --- STATE ---
+        let sessions = JSON.parse(localStorage.getItem('gemini_sessions')) || [];
+        let currentSessionId = localStorage.getItem('gemini_current_session_id') || null;
+        let genAI, model, chat;
+        let currentFiles = [];
+        let abortController = null; // For stopping generation
+
+        // --- DOM ELEMENTS ---
+        const els = {
+            msgs: document.getElementById('chat-messages'),
+            input: document.getElementById('user-input'),
+            sendBtn: document.getElementById('send-button'),
+            fileInput: document.getElementById('file-input'),
+            attachBtn: document.getElementById('attach-btn'),
+            urlToggleBtn: document.getElementById('url-toggle-btn'),
+            codeExecBtn: document.getElementById('code-exec-btn'), // NEW
+            thinkingLowBtn: document.getElementById('thinking-low-btn'),
+            thinkingHighBtn: document.getElementById('thinking-high-btn'),
+            previewArea: document.getElementById('files-preview-area'),
+            modelSel: document.getElementById('model-selector'),
+            keySel: document.getElementById('key-selector'),
+            sysInstr: document.getElementById('system-instruction'),
+            settingsPanel: document.getElementById('settings-panel'),
+            settingsToggle: document.getElementById('settings-toggle'),
+            saveBtn: document.getElementById('save-chat-btn'),
+            tempBadge: document.getElementById('temp-badge'),
+            histList: document.getElementById('history-list'),
+            newChat: document.getElementById('new-chat-btn'),
+            deleteAll: document.getElementById('delete-all-btn'),
+            toggle: document.getElementById('toggle-sidebar'),
+            sidebar: document.getElementById('sidebar'),
+            dragOverlay: document.getElementById('drag-overlay'),
+            inputContainer: document.getElementById('input-container'),
+            tplContainer: document.getElementById('templates-container'),
+            // NEW: Modal elements
+            htmlPreviewModal: document.getElementById('html-preview-modal'),
+            modalCloseBtn: document.querySelector('#html-preview-modal .modal-close'),
+            previewIframe: document.getElementById('preview-iframe'),
+            // NEW: Mode elements
+            modeToggle: document.getElementById('mode-toggle'),
+            geminiLabel: document.getElementById('gemini-label'),
+            gemmaLabel: document.getElementById('gemma-label'),
+            appTitle: document.querySelector('.header-left span'),
+            sysInstrContainer: document.getElementById('system-instruction-container'),
+            googleSearchBtn: document.getElementById('google-search-btn'),
+            // Crypto elements
+            apiKey1Input: document.getElementById('api-key-1-input'),
+            apiKey2Input: document.getElementById('api-key-2-input'),
+            pinInput: document.getElementById('pin-input'),
+            saveKeysBtn: document.getElementById('save-keys-btn'),
+            unlockKeysBtn: document.getElementById('unlock-keys-btn'),
+            cryptoMsg: document.getElementById('crypto-msg'),
+            pinModal: document.getElementById('pin-modal'),
+            startupPin: document.getElementById('startup-pin'),
+            startupUnlockBtn: document.getElementById('startup-unlock-btn'),
+            startupCloseBtn: document.getElementById('startup-close-btn')
+        };
+
+        // --- INIT ---
+        function init() {
+            renderTemplates();
+            setupCryptoEvents();
+            const encryptedStr = localStorage.getItem('gemini_encrypted_keys');
+            if (encryptedStr) {
+                els.pinModal.style.display = 'flex';
+                els.startupPin.focus();
+            } else {
+                continueInit();
+            }
+        }
+
+        function continueInit() {
+            initGenAI(); // Setup AI client with currently selected key
+
+            if (sessions.length === 0) createNewSession();
+            else if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) {
+                currentSessionId = sessions[0].id;
+            }
+
+            renderSidebar();
+            loadSession(currentSessionId);
+            setupDragAndDrop();
+            setupModalEvents();
+        }
+
+        function setupCryptoEvents() {
+            els.startupPin.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') els.startupUnlockBtn.click();
+            });
+
+            els.pinInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (localStorage.getItem('gemini_encrypted_keys')) {
+                        els.unlockKeysBtn.click();
+                    } else {
+                        els.saveKeysBtn.click();
+                    }
+                }
+            });
+
+            els.startupUnlockBtn.addEventListener('click', async () => {
+                const pin = els.startupPin.value;
+                if (pin.length !== 8) {
+                    els.startupCryptoMsg.innerText = "PIN must be exactly 8 digits.";
+                    return;
+                }
+                const encryptedStr = localStorage.getItem('gemini_encrypted_keys');
+                if (encryptedStr) {
+                    const obj = JSON.parse(encryptedStr);
+                    const decrypted = await decryptData(pin, obj);
+                    if (decrypted) {
+                        decryptedKeys = decrypted;
+                        activePin = pin;
+                        els.pinModal.style.display = 'none';
+                        els.apiKey1Input.value = decryptedKeys.key1 || '';
+                        els.apiKey2Input.value = decryptedKeys.key2 || '';
+                        continueInit();
+                    } else {
+                        els.startupCryptoMsg.innerText = "Incorrect PIN.";
+                    }
+                }
+            });
+
+            els.startupCloseBtn.addEventListener('click', () => {
+                els.pinModal.style.display = 'none';
+                continueInit();
+            });
+
+            els.saveKeysBtn.addEventListener('click', async () => {
+                const pin = els.pinInput.value;
+                if (pin.length !== 8) {
+                    els.cryptoMsg.style.color = "var(--warning-color)";
+                    els.cryptoMsg.innerText = "PIN must be 8 digits.";
+                    return;
+                }
+                const keysObj = {
+                    key1: els.apiKey1Input.value.trim(),
+                    key2: els.apiKey2Input.value.trim()
+                };
+                const encrypted = await encryptData(pin, keysObj);
+                localStorage.setItem('gemini_encrypted_keys', JSON.stringify(encrypted));
+                decryptedKeys = keysObj;
+                activePin = pin;
+                els.cryptoMsg.style.color = "var(--active-color)";
+                els.cryptoMsg.innerText = "Encrypted & Saved!";
+                setTimeout(() => els.cryptoMsg.innerText = "", 3000);
+                initGenAI();
+                const s = sessions.find(s => s.id === currentSessionId);
+                if (s) initChatInstance(s);
+            });
+
+            els.unlockKeysBtn.addEventListener('click', async () => {
+                const pin = els.pinInput.value;
+                if (pin.length !== 8) {
+                    els.cryptoMsg.style.color = "var(--warning-color)";
+                    els.cryptoMsg.innerText = "Enter 8-digit PIN.";
+                    return;
+                }
+                const encryptedStr = localStorage.getItem('gemini_encrypted_keys');
+                if (!encryptedStr) {
+                    els.cryptoMsg.style.color = "var(--warning-color)";
+                    els.cryptoMsg.innerText = "No saved keys found.";
+                    return;
+                }
+                const obj = JSON.parse(encryptedStr);
+                const decrypted = await decryptData(pin, obj);
+                if (decrypted) {
+                    decryptedKeys = decrypted;
+                    activePin = pin;
+                    els.apiKey1Input.value = decryptedKeys.key1 || '';
+                    els.apiKey2Input.value = decryptedKeys.key2 || '';
+                    els.cryptoMsg.style.color = "var(--active-color)";
+                    els.cryptoMsg.innerText = "Unlocked!";
+                    setTimeout(() => els.cryptoMsg.innerText = "", 3000);
+                    initGenAI();
+                    const s = sessions.find(s => s.id === currentSessionId);
+                    if (s) initChatInstance(s);
+                } else {
+                    els.cryptoMsg.style.color = "var(--danger-color)";
+                    els.cryptoMsg.innerText = "Incorrect PIN.";
+                }
+            });
+        }
+
+        function initGenAI() {
+            const selectedKeyType = els.keySel.value;
+            const activeKey = selectedKeyType === 'key1' ? decryptedKeys.key1 : decryptedKeys.key2;
+
+            if (!activeKey || activeKey.includes("YOUR_API")) {
+                console.warn("API Key not configured for: " + selectedKeyType);
+                genAI = null;
+            } else {
+                genAI = new GoogleGenerativeAI(activeKey);
+            }
+        }
+
+        // --- TEMPLATES UI ---
+        function renderTemplates() {
+            els.tplContainer.innerHTML = '';
+            PROMPT_TEMPLATES.forEach(tpl => {
+                const btn = document.createElement('div');
+                btn.className = 'template-chip';
+                btn.textContent = tpl.label;
+                btn.onclick = () => {
+                    els.input.value = tpl.text;
+                    els.input.focus();
+                    checkInputState();
+                };
+                els.tplContainer.appendChild(btn);
+            });
+        }
+
+        // --- SESSION LOGIC ---
+        function createNewSession() {
+            const id = Date.now().toString();
+            sessions.unshift({
+                id,
+                title: "New Chat",
+                messages: [],
+                isTemp: true,
+                config: {
+                    model: localStorage.getItem('gemini_last_model') || 'gemini-2.5-flash',
+                    systemInstruction: 'make your replies easy to read with hierarchial text and emojis',
+                    useUrlContext: false,
+                    useCodeExecution: false,
+                    useGoogleSearch: false,
+                    thinkingMode: 'none'
+                },
+                timestamp: Date.now()
+            });
+            loadSession(id);
+            renderSidebar();
+        }
+
+        function deleteSession(e, id) {
+            e.stopPropagation();
+            sessions = sessions.filter(s => s.id !== id);
+            if (sessions.length === 0) createNewSession();
+            else {
+                if (currentSessionId === id) loadSession(sessions[0].id);
+                else { saveData(); renderSidebar(); }
+            }
+        }
+
+        function deleteAllSessions() {
+            if (confirm("Are you sure you want to delete ALL chat history?")) {
+                sessions = [];
+                localStorage.removeItem('gemini_sessions');
+                createNewSession();
+            }
+        }
+
+        async function loadSession(id) {
+            currentSessionId = id;
+            const session = sessions.find(s => s.id === id);
+            if (!session) return;
+
+            // Normalize old sessions
+            if (!session.config) session.config = { model: 'gemini-2.5-flash', systemInstruction: '' };
+            if (!session.config.thinkingMode) session.config.thinkingMode = 'none';
+
+            // Mode Logic
+            const isGemmaModel = GEMMA_MODELS.some(m => m.value === session.config.model);
+            els.modeToggle.checked = isGemmaModel;
+            updateModeUI();
+            populateModels();
+
+            els.msgs.innerHTML = '';
+
+            // Restore UI controls
+            els.modelSel.value = session.config.model || (isGemmaModel ? GEMMA_MODELS[0].value : 'gemini-2.5-flash');
+            els.sysInstr.value = session.config.systemInstruction || '';
+
+            // Restore Toggle States
+            els.urlToggleBtn.classList.toggle('active', session.config.useUrlContext === true);
+            els.codeExecBtn.classList.toggle('active', session.config.useCodeExecution === true);
+            els.googleSearchBtn.classList.toggle('active', session.config.useGoogleSearch === true);
+
+            updateThinkingButtonUI(session.config.thinkingMode);
+
+
+            // Toggle Save UI
+            if (session.isTemp) {
+                els.saveBtn.style.display = 'block';
+                els.tempBadge.style.display = 'inline-block';
+            } else {
+                els.saveBtn.style.display = 'none';
+                els.tempBadge.style.display = 'none';
+            }
+
+            saveData();
+            updateSidebarActive();
+
+            // Restore Messages
+            session.messages.forEach(msg => {
+                if (msg.role === 'user') appendUserMessage(msg.text, msg.files);
+                else {
+                    const parsedHtml = msg.html || DOMPurify.sanitize(marked.parse(msg.text), domPurifyConfig);
+                    renderBotResponseHTML(parsedHtml);
+                }
+            });
+
+            // Make sure the last message has the retry button if applicable
+            renderRetryButton();
+
+            initChatInstance(session);
+        }
+
+        function initChatInstance(session) {
+            if (!genAI) return;
+            try {
+                const sysInstr = els.sysInstr.value.trim();
+
+                // Build tools array dynamically based on UI state/config
+                const tools = [];
+
+                if (!els.modeToggle.checked && els.googleSearchBtn.classList.contains('active')) {
+                    tools.push({ googleSearch: {} });
+                }
+
+                if (els.urlToggleBtn.classList.contains('active')) {
+                    tools.push({ urlContext: {} });
+                }
+
+                // NEW: Only add codeExecution if the button/config is active
+                if (els.codeExecBtn.classList.contains('active')) {
+                    tools.push({ codeExecution: {} });
+                }
+
+                model = genAI.getGenerativeModel({
+                    model: els.modelSel.value,
+                    systemInstruction: (!els.modeToggle.checked && sysInstr) ? { parts: [{ text: sysInstr }] } : undefined,
+                    tools: tools.length > 0 ? tools : undefined,
+                    generationConfig: session.config.generationConfig
+                });
+
+                const apiHistory = session.messages
+                    .filter(m => m.text && !m.error)
+                    .map(m => ({
+                        role: m.role === 'user' ? 'user' : 'model',
+                        parts: [{ text: m.text }]
+                    }));
+
+                chat = model.startChat({ history: apiHistory });
+            } catch (e) { console.error("Init Chat Error:", e); }
+        }
+
+        function updateModeUI() {
+            const isGemma = els.modeToggle.checked;
+            els.geminiLabel.classList.toggle('active', !isGemma);
+            els.gemmaLabel.classList.toggle('active', isGemma);
+            els.appTitle.textContent = isGemma ? "Gemma Studio" : "Gemini Studio";
+
+            if (els.sysInstrContainer) {
+                els.sysInstrContainer.style.display = isGemma ? 'none' : 'block';
+            }
+            if (els.googleSearchBtn) {
+                els.googleSearchBtn.style.display = isGemma ? 'none' : 'flex';
+            }
+        }
+
+        function populateModels() {
+            const isGemma = els.modeToggle.checked;
+            const models = isGemma ? GEMMA_MODELS : GEMINI_MODELS;
+            els.modelSel.innerHTML = '';
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.value;
+                opt.textContent = m.label;
+                els.modelSel.appendChild(opt);
+            });
+        }
+
+        function updateSessionConfig() {
+            const s = sessions.find(s => s.id === currentSessionId);
+            if (s) {
+                s.config.model = els.modelSel.value;
+                localStorage.setItem('gemini_last_model', els.modelSel.value);
+                s.config.systemInstruction = els.sysInstr.value;
+                s.config.useUrlContext = els.urlToggleBtn.classList.contains('active');
+                s.config.useCodeExecution = els.codeExecBtn.classList.contains('active');
+                s.config.useGoogleSearch = els.googleSearchBtn.classList.contains('active');
+
+                // --- Build generationConfig dynamically based on thinkingMode ---
+                const mode = s.config.thinkingMode;
+                if (mode === 'none') {
+                    delete s.config.generationConfig;
+                } else {
+                    s.config.generationConfig = {
+                        thinkingConfig: {
+                            includeThoughts: false,
+                            thinkingBudget: mode === 'low' ? 512 : 24000
+                        }
+                    };
+                }
+                // -------------------------------------------------------------
+
+                saveData();
+                initChatInstance(s);
+            }
+        }
+
+        function handleKeyChange() {
+            initGenAI();
+            const s = sessions.find(s => s.id === currentSessionId);
+            if (s) initChatInstance(s);
+        }
+
+        function saveData() {
+            try {
+                const sessionsToSave = sessions.filter(s => !s.isTemp);
+                localStorage.setItem('gemini_sessions', JSON.stringify(sessionsToSave));
+                localStorage.setItem('gemini_current_session_id', currentSessionId);
+            } catch (e) {
+                console.warn("Storage quota exceeded.");
+            }
+        }
+
+        function saveCurrentChat() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (session) {
+                session.isTemp = false;
+                saveData();
+                els.saveBtn.style.display = 'none';
+                els.tempBadge.style.display = 'none';
+                renderSidebar();
+                const originalText = els.saveBtn.innerText;
+                els.saveBtn.innerText = "Saved!";
+                setTimeout(() => els.saveBtn.innerText = originalText, 1000);
+            }
+        }
+
+        async function generateAutoTitle(firstUserText) {
+            if (!firstUserText) return;
+            try {
+                const titleModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+                const result = await titleModel.generateContent(`Generate a very concise title (max 4 words) for a chat that starts with: "${firstUserText.substring(0, 100)}..."`);
+                const title = result.response.text().replace(/["\n]/g, '').trim();
+
+                const s = sessions.find(s => s.id === currentSessionId);
+                if (s) {
+                    s.title = title;
+                    saveData();
+                    renderSidebar();
+                }
+            } catch (e) { /* Ignore title errors */ }
+        }
+
+        function renderRetryButton() {
+            document.querySelectorAll('.retry-msg-btn').forEach(btn => btn.remove());
+            const userMessages = document.querySelectorAll('.user-message');
+            if (userMessages.length === 0) return;
+            const lastUserMsg = userMessages[userMessages.length - 1];
+
+            const btn = document.createElement('button');
+            btn.className = 'retry-msg-btn';
+            btn.innerHTML = '↻ Retry';
+            btn.title = "Resend this message";
+            btn.onclick = () => retryLastMessage();
+            const content = lastUserMsg.querySelector('.user-content');
+            if (content) content.appendChild(btn);
+        }
+
+        function retryLastMessage() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (!session || session.messages.length === 0) return;
+
+            const lastMsg = session.messages[session.messages.length - 1];
+            let userMsgToRetry;
+
+            if (lastMsg.role === 'model') {
+                session.messages.pop();
+                userMsgToRetry = session.messages.pop();
+                if (els.msgs.lastElementChild) els.msgs.lastElementChild.remove();
+                if (els.msgs.lastElementChild) els.msgs.lastElementChild.remove();
+            } else {
+                userMsgToRetry = session.messages.pop();
+                if (els.msgs.lastElementChild) els.msgs.lastElementChild.remove();
+            }
+
+            if (!userMsgToRetry) return;
+            els.input.value = userMsgToRetry.text;
+            currentFiles = userMsgToRetry.files || [];
+            renderFilePreviews();
+            checkInputState();
+            sendMessage();
+        }
+
+        async function handleSendClick() {
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+                setLoading(false);
+                appendBotMessage('<span style="color:var(--text-secondary)">Generation aborted by user.</span>');
+                renderRetryButton();
+            } else {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const text = els.input.value.trim();
+            if (!text && currentFiles.length === 0) return;
+
+            const selectedKeyType = els.keySel.value;
+            const activeKey = selectedKeyType === 'key1' ? decryptedKeys.key1 : decryptedKeys.key2;
+            if (!activeKey || activeKey.includes("YOUR_API") || !genAI) {
+                appendUserMessage(text, currentFiles);
+                appendBotMessage(`<div class="error-message"><strong>Configuration Error</strong><br>Please configure and unlock your API Keys in System Settings.</div>`);
+                els.input.value = '';
+                clearFiles();
+                return;
+            }
+
+            appendUserMessage(text, currentFiles);
+            renderRetryButton();
+
+            const session = sessions.find(s => s.id === currentSessionId);
+            const isFirstMessage = session.messages.length === 0;
+
+            session.messages.push({ role: 'user', text: text, files: currentFiles });
+
+            const parts = [];
+            currentFiles.forEach(f => {
+                parts.push({ inlineData: { mimeType: f.mimeType, data: f.base64 } });
+            });
+            if (text) parts.push({ text });
+
+            els.input.value = '';
+            els.input.style.height = 'auto';
+            clearFiles();
+            setLoading(true);
+
+            abortController = new AbortController();
+            const signal = abortController.signal;
+
+            const botMsgDiv = appendBotMessage('<span class="cursor">...</span>');
+            const botContentDiv = botMsgDiv.querySelector('.bot-content');
+
+            let fullText = "";
+            let thoughtsHtml = ""; // To hold thinking steps
+
+            try {
+                if (!chat) initChatInstance(session);
+
+                const result = await chat.sendMessageStream(parts, { signal });
+
+                for await (const chunk of result.stream) {
+                    const isAtBottom = (els.msgs.scrollHeight - els.msgs.scrollTop - els.msgs.clientHeight) < 100;
+
+                    // Check for and render thoughts
+                    if (chunk.thought && chunk.thought.toolCode) {
+                        const toolCode = escapeHTML(chunk.thought.toolCode);
+                        thoughtsHtml += `
+                            <div style="background: #2a2a2e; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #3f3f46;">
+                                <strong style="color: #a1a1aa; font-size: 0.8rem; text-transform: uppercase;">Thinking...</strong>
+                                <pre style="margin-top: 5px; background: #18181b; padding: 10px; border-radius: 6px; white-space: pre-wrap; word-wrap: break-word;"><code>${toolCode}</code></pre>
+                            </div>`;
+                    }
+
+                    const chunkText = chunk.text();
+                    fullText += chunkText;
+
+                    botContentDiv.innerHTML = thoughtsHtml + DOMPurify.sanitize(marked.parse(fullText), domPurifyConfig);
+
+                    if (isAtBottom) scrollBottom();
+                }
+
+                const response = await result.response;
+                const citations = getCitations(response);
+                let finalHtml = thoughtsHtml + DOMPurify.sanitize(marked.parse(fullText), domPurifyConfig);
+                if (citations) finalHtml += citations;
+
+                botContentDiv.innerHTML = finalHtml;
+                botContentDiv.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+                addCodeBlockButtons(botContentDiv);
+
+                session.messages.push({ role: 'model', text: fullText, html: finalHtml });
+                saveData();
+
+                if (isFirstMessage) generateAutoTitle(text);
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    botContentDiv.innerHTML = DOMPurify.sanitize(marked.parse(fullText), domPurifyConfig) + '<br><span style="color:var(--text-secondary); font-style:italic;">(Generation stopped)</span>';
+                    if (fullText) {
+                        session.messages.push({ role: 'model', text: fullText, html: botContentDiv.innerHTML });
+                        saveData();
+                    }
+                } else {
+                    if (!fullText) botMsgDiv.remove();
+                    appendBotMessage(formatError(err));
+                }
+            } finally {
+                abortController = null;
+                setLoading(false);
+                renderRetryButton();
+                if ((els.msgs.scrollHeight - els.msgs.scrollTop - els.msgs.clientHeight) < 100) {
+                    scrollBottom();
+                }
+            }
+        }
+
+        function formatError(err) {
+            let msg = err.message;
+            let title = "Error";
+            if (msg.includes("429")) { title = "Quota Exceeded"; msg = "You've sent too many requests too quickly."; }
+            else if (msg.includes("401") || msg.includes("API key")) { title = "Authentication Error"; msg = "Invalid API Key."; }
+            else if (msg.includes("SAFETY")) { title = "Safety Block"; msg = "The response was blocked due to safety settings."; }
+            return `<div class="error-message"><strong>${title}</strong><br>${escapeHTML(msg)}</div>`;
+        }
+
+        function appendUserMessage(text, files = []) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'user-content';
+
+            // Handle file attachments safely
+            if (files && files.length > 0) {
+                const attachmentsDiv = document.createElement('div');
+                attachmentsDiv.className = 'attachment-grid';
+                attachmentsDiv.style.cssText = 'display:flex; gap:10px; margin-bottom:5px; justify-content:flex-end; flex-wrap:wrap;';
+
+                files.forEach(f => {
+                    if (f.mimeType.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.src = f.dataUrl;
+                        img.style.cssText = 'max-width:200px; border-radius:8px;';
+                        attachmentsDiv.appendChild(img);
+                    } else {
+                        const fileDiv = document.createElement('div');
+                        fileDiv.style.cssText = 'background:#333; padding:5px 10px; border-radius:4px;';
+                        fileDiv.textContent = `📄 ${f.name}`; // Use textContent here too for safety
+                        attachmentsDiv.appendChild(fileDiv);
+                    }
+                });
+                contentDiv.appendChild(attachmentsDiv);
+            }
+
+            // Handle text safely using textContent
+            if (text) {
+                const textP = document.createElement('p');
+                textP.style.margin = '0';
+                textP.style.whiteSpace = 'pre-wrap';
+                textP.textContent = text;
+                contentDiv.appendChild(textP);
+            }
+
+            messageDiv.appendChild(contentDiv);
+            els.msgs.appendChild(messageDiv);
+            scrollBottom();
+        }
+
+        function appendBotMessage(html) {
+            const div = document.createElement('div');
+            div.className = 'message bot-message';
+            div.innerHTML = `<div class="bot-content">${html}</div>`;
+            els.msgs.appendChild(div);
+            scrollBottom();
+            return div;
+        }
+
+        function renderBotResponseHTML(html) {
+            const div = appendBotMessage(html);
+            div.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+            addCodeBlockButtons(div);
+        }
+
+        function addCodeBlockButtons(container) {
+            const codeBlocks = container.querySelectorAll('pre');
+            codeBlocks.forEach(block => {
+                const codeEl = block.querySelector('code');
+                if (!codeEl) return;
+
+                // Copy Button
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-code-btn';
+                copyBtn.textContent = 'Copy';
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(codeEl.innerText).then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        copyBtn.textContent = 'Error';
+                    });
+                });
+                block.appendChild(copyBtn);
+
+                // Preview HTML Button (if applicable)
+                if (codeEl.classList.contains('language-html')) {
+                    const previewBtn = document.createElement('button');
+                    previewBtn.className = 'preview-html-btn';
+                    previewBtn.textContent = 'Preview HTML';
+                    previewBtn.addEventListener('click', () => {
+                        openHtmlPreview(codeEl.innerText);
+                    });
+                    block.appendChild(previewBtn);
+                }
+            });
+        }
+
+        // --- NEW: MODAL LOGIC ---
+        function setupModalEvents() {
+            els.modalCloseBtn.onclick = closeHtmlPreview;
+            window.onclick = function (event) {
+                if (event.target == els.htmlPreviewModal) {
+                    closeHtmlPreview();
+                }
+            }
+        }
+
+        function openHtmlPreview(htmlContent) {
+            els.previewIframe.srcdoc = htmlContent;
+            els.htmlPreviewModal.style.display = "block";
+        }
+
+        function closeHtmlPreview() {
+            els.htmlPreviewModal.style.display = "none";
+            els.previewIframe.srcdoc = ''; // Clear content
+        }
+
+        function renderSidebar() {
+            els.histList.innerHTML = '';
+            sessions.forEach(s => {
+                const div = document.createElement('div');
+                div.className = `history-item ${s.id === currentSessionId ? 'active' : ''} ${s.isTemp ? 'temp-session' : ''}`;
+                div.onclick = () => loadSession(s.id);
+                div.innerHTML = `<span>${escapeHTML(s.title)}</span><button class="delete-chat" onclick="window.deleteSessionBtn(event, '${escapeHTML(s.id)}')">×</button>`;
+                els.histList.appendChild(div);
+            });
+        }
+        window.deleteSessionBtn = deleteSession;
+
+        function updateSidebarActive() {
+            document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+            renderSidebar();
+        }
+
+        function getCitations(response) {
+            const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+            const webChunks = chunks?.filter(c => c.web);
+            if (!webChunks?.length) return '';
+            return `<div class="grounding-sources">Sources: ${webChunks.map((c, i) => {
+                if (!c.web?.uri) return '';
+                let uri = c.web.uri;
+                try {
+                    const urlObj = new URL(uri);
+                    if (['javascript:', 'data:', 'vbscript:'].includes(urlObj.protocol)) {
+                        uri = '#';
+                    }
+                } catch(e) { uri = '#'; }
+                return `<a href="${escapeHTML(uri)}" target="_blank" class="source-link">[${i + 1}] ${escapeHTML(c.web.title || 'Source')}</a>`;
+            }).join('')}</div>`;
+        }
+
+        function scrollBottom() { els.msgs.scrollTop = els.msgs.scrollHeight; }
+
+        function setLoading(state) {
+            const sendSvg = els.sendBtn.querySelector('.send-icon');
+            const stopSvg = els.sendBtn.querySelector('.stop-icon');
+            if (state) {
+                els.sendBtn.disabled = false;
+                els.sendBtn.classList.add('active', 'abort');
+                sendSvg.style.display = 'none';
+                stopSvg.style.display = 'block';
+                els.input.disabled = true;
+                document.querySelectorAll('.retry-msg-btn').forEach(b => b.style.display = 'none');
+            } else {
+                els.sendBtn.classList.remove('abort');
+                sendSvg.style.display = 'block';
+                stopSvg.style.display = 'none';
+                els.input.disabled = false;
+                els.input.focus();
+                checkInputState();
+                document.querySelectorAll('.retry-msg-btn').forEach(b => b.style.display = 'inline-flex');
+            }
+        }
+
+        function setupDragAndDrop() {
+            const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+            ['dragenter', 'dragover'].forEach(eventName => document.addEventListener(eventName, (e) => { stop(e); document.body.classList.add('dragging'); }));
+            ['dragleave', 'drop'].forEach(eventName => document.addEventListener(eventName, (e) => { stop(e); if (eventName === 'drop' || e.relatedTarget === null) document.body.classList.remove('dragging'); }));
+            document.addEventListener('drop', (e) => { stop(e); document.body.classList.remove('dragging'); if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files); });
+        }
+
+        function processFiles(files) {
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    currentFiles.push({ name: file.name, mimeType: file.type, dataUrl: ev.target.result, base64: ev.target.result.split(',')[1] });
+                    renderFilePreviews();
+                    checkInputState();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderFilePreviews() {
+            els.previewArea.style.display = currentFiles.length ? 'flex' : 'none';
+            els.previewArea.innerHTML = '';
+            currentFiles.forEach((f, idx) => {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                div.innerHTML = f.mimeType.startsWith('image/') ? `<img src="${f.dataUrl}">` : `<span style="font-size:24px; color:#a1a1aa">📄</span>`;
+                const rmBtn = document.createElement('button');
+                rmBtn.className = 'preview-remove';
+                rmBtn.innerHTML = '×';
+                rmBtn.onclick = () => { currentFiles.splice(idx, 1); renderFilePreviews(); checkInputState(); };
+                div.appendChild(rmBtn);
+                els.previewArea.appendChild(div);
+            });
+        }
+
+        function clearFiles() { currentFiles = []; renderFilePreviews(); els.fileInput.value = ''; }
+
+        function checkInputState() {
+            const isValid = els.input.value.trim().length > 0 || currentFiles.length > 0;
+            if (!abortController) {
+                els.sendBtn.disabled = !isValid;
+                els.sendBtn.classList.toggle('active', isValid);
+            }
+        }
+
+        // --- THINKING MODE UI LOGIC ---
+        function updateThinkingButtonUI(mode) {
+            els.thinkingLowBtn.classList.toggle('active', mode === 'low');
+            els.thinkingHighBtn.classList.toggle('active', mode === 'high');
+        }
+
+        function handleThinkingToggle(mode) {
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (!session) return;
+            const newMode = session.config.thinkingMode === mode ? 'none' : mode;
+            session.config.thinkingMode = newMode;
+            updateThinkingButtonUI(newMode);
+            updateSessionConfig();
+        }
+
+        // --- EVENT LISTENERS ---
+        els.input.addEventListener('input', () => {
+            els.input.style.height = 'auto';
+            els.input.style.height = els.input.scrollHeight + 'px';
+            checkInputState();
+        });
+
+        els.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!els.sendBtn.disabled && !abortController) handleSendClick();
+            }
+        });
+
+        els.sendBtn.addEventListener('click', handleSendClick);
+        els.attachBtn.addEventListener('click', () => els.fileInput.click());
+        els.fileInput.addEventListener('change', (e) => processFiles(e.target.files));
+
+        els.newChat.addEventListener('click', createNewSession);
+        els.deleteAll.addEventListener('click', deleteAllSessions);
+        els.saveBtn.addEventListener('click', saveCurrentChat);
+
+        els.modeToggle.addEventListener('change', () => {
+            updateModeUI();
+            populateModels();
+            updateSessionConfig();
+        });
+
+        els.modelSel.addEventListener('change', updateSessionConfig);
+        els.keySel.addEventListener('change', handleKeyChange);
+        els.sysInstr.addEventListener('change', updateSessionConfig);
+
+        els.urlToggleBtn.addEventListener('click', () => {
+            els.urlToggleBtn.classList.toggle('active');
+            updateSessionConfig();
+        });
+
+        els.googleSearchBtn.addEventListener('click', () => {
+            els.googleSearchBtn.classList.toggle('active');
+            updateSessionConfig();
+        });
+
+        // NEW: Code Execution Toggle Listener
+        els.codeExecBtn.addEventListener('click', () => {
+            els.codeExecBtn.classList.toggle('active');
+            updateSessionConfig();
+        });
+
+        els.thinkingLowBtn.addEventListener('click', () => handleThinkingToggle('low'));
+        els.thinkingHighBtn.addEventListener('click', () => handleThinkingToggle('high'));
+
+        els.settingsToggle.addEventListener('click', () => els.settingsPanel.classList.toggle('visible'));
+        els.toggle.addEventListener('click', () => {
+            els.sidebar.classList.toggle('hidden');
+            if (window.innerWidth < 768) els.sidebar.classList.toggle('open');
+        });
+
+        init();
+
+    </script>
+</body>
+
+</html>

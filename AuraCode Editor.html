@@ -1,0 +1,3193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>AuraCode — AI Code Editor</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="AuraCode — A browser-based, AI-assisted code editor with Gemini integration, smart code replacement, and a premium spatial UI.">
+
+    <!-- ============================================================= -->
+    <!-- INHERITED EXTERNAL DEPENDENCIES (From AuraChat Codex)          -->
+    <!-- Markdown parsing, sanitization, syntax highlighting, KaTeX     -->
+    <!-- ============================================================= -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension/lib/index.umd.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
+
+    <!-- Google Font (Inherited from Codex) -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Quicksand:wght@300..700&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+    </style>
+
+    <style>
+        /* ============================================================= */
+        /*  CORE CSS VARIABLES — Inherited from AuraChat Codex           */
+        /*  Exact same spatial/neumorphic design language & Bento grid   */
+        /* ============================================================= */
+        :root {
+            --bg-app: #0f0f13;
+            --bg-spatial: rgba(28, 28, 33, 0.65);
+            --bg-bento: rgba(40, 40, 48, 0.5);
+            --bg-neumorphic: #222228;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --accent-color: #fafafa;
+            --active-color: #60a5fa;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --success-color: #34d399;
+
+            /* Neumorphism Shadows for Micro-interactions */
+            --shadow-raised: 3px 3px 8px rgba(0,0,0,0.5), -3px -3px 8px rgba(255,255,255,0.04);
+            --shadow-inset: inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(255,255,255,0.04);
+
+            /* Spatial Deep Shadows */
+            --shadow-spatial: 0 24px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+            --shadow-floating: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05);
+
+            /* Editor-specific variables */
+            --editor-bg: #18181b;
+            --editor-line-bg: rgba(96, 165, 250, 0.06);
+            --gutter-bg: rgba(0,0,0,0.3);
+            --gutter-color: #52525b;
+            --tab-active: rgba(96, 165, 250, 0.15);
+            --resizer-color: rgba(255, 255, 255, 0.06);
+            --resizer-hover: var(--active-color);
+        }
+
+        /* ============================================================= */
+        /*  GLOBAL BODY — Inherited aesthetic with radial gradients       */
+        /* ============================================================= */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg-app);
+            background-image: radial-gradient(circle at top right, rgba(96, 165, 250, 0.05), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.05), transparent 40%);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            padding: 12px;
+            box-sizing: border-box;
+            gap: 12px;
+            font-size: 0.85rem;
+        }
+
+        /* ============================================================= */
+        /*  TOP HEADER BAR — Global controls & branding                  */
+        /* ============================================================= */
+        #app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background-color: var(--bg-spatial);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-floating);
+            flex-shrink: 0;
+            min-height: 48px;
+            gap: 12px;
+        }
+
+        .header-left, .header-right, .header-center {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #app-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            letter-spacing: 0.5px;
+        }
+
+        #app-title span {
+            background: linear-gradient(135deg, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Mode Toggle (Gemini/Gemma) — Inherited */
+        .switch { position: relative; display: inline-block; width: 48px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-neumorphic); transition: .4s; border-radius: 24px;
+            box-shadow: var(--shadow-inset);
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px;
+            background-color: var(--text-secondary); transition: .4s; border-radius: 50%;
+            box-shadow: var(--shadow-raised);
+        }
+        input:checked + .slider:before { background-color: #a855f7; transform: translateX(20px); }
+        .mode-label {
+            font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);
+            transition: color 0.3s; user-select: none;
+        }
+        .mode-label.active { color: var(--text-primary); }
+
+        /* Header Buttons — Neumorphic */
+        .header-btn {
+            background: var(--bg-neumorphic); border: none; color: var(--text-secondary);
+            cursor: pointer; padding: 8px 14px; border-radius: 12px;
+            box-shadow: var(--shadow-raised); transition: all 0.2s ease;
+            font-size: 0.8rem; font-weight: 500; font-family: inherit;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .header-btn:active { box-shadow: var(--shadow-inset); color: var(--text-primary); }
+        .header-btn:hover { color: var(--text-primary); }
+
+        /* ============================================================= */
+        /*  SPLIT-PANE LAYOUT — Editor (Left) + Chat (Right)             */
+        /* ============================================================= */
+        #split-container {
+            flex-grow: 1;
+            display: flex;
+            gap: 0;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* Left Pane — The Code Editor */
+        #editor-pane {
+            flex: 1 1 55%;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-spatial);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-spatial);
+            overflow: hidden;
+            min-width: 300px;
+        }
+
+        /* Resizer Handle */
+        #pane-resizer {
+            width: 8px;
+            cursor: col-resize;
+            background: var(--resizer-color);
+            flex-shrink: 0;
+            transition: background 0.2s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #pane-resizer:hover, #pane-resizer.dragging {
+            background: rgba(96, 165, 250, 0.2);
+        }
+        #pane-resizer::after {
+            content: '';
+            width: 2px;
+            height: 40px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+        #pane-resizer:hover::after, #pane-resizer.dragging::after {
+            background: var(--active-color);
+        }
+
+        /* Right Pane — The AI Chat */
+        #chat-pane {
+            flex: 1 1 45%;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-spatial);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-spatial);
+            overflow: hidden;
+            min-width: 300px;
+        }
+
+        /* ============================================================= */
+        /*  EDITOR TAB BAR                                                */
+        /* ============================================================= */
+        #editor-tab-bar {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 6px 12px 0 12px;
+            overflow-x: auto;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.15);
+        }
+
+        .editor-tab {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-family: inherit;
+            position: relative;
+        }
+        .editor-tab:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.03);
+        }
+        .editor-tab.active {
+            color: var(--text-primary);
+            background: var(--tab-active);
+            border-color: var(--border-color);
+        }
+        .editor-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--active-color);
+            border-radius: 2px 2px 0 0;
+        }
+        .tab-close {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 2px;
+            line-height: 1;
+            opacity: 0;
+            transition: all 0.15s;
+        }
+        .editor-tab:hover .tab-close { opacity: 0.7; }
+        .tab-close:hover { color: var(--danger-color); opacity: 1 !important; }
+
+        .add-tab-btn {
+            padding: 6px 10px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .add-tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+
+        /* ============================================================= */
+        /*  EDITOR TOOLBAR (Line selection, language label)              */
+        /* ============================================================= */
+        #editor-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 14px;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.1);
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .editor-toolbar-left, .editor-toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .editor-toolbar-btn {
+            background: var(--bg-neumorphic); border: none; color: var(--text-secondary);
+            cursor: pointer; padding: 5px 10px; border-radius: 8px;
+            box-shadow: var(--shadow-raised); transition: all 0.2s ease;
+            font-size: 0.72rem; font-weight: 500; font-family: inherit;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .editor-toolbar-btn:active { box-shadow: var(--shadow-inset); color: var(--text-primary); }
+        .editor-toolbar-btn:hover { color: var(--text-primary); }
+
+        .line-indicator {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            user-select: none;
+        }
+
+        .lang-badge {
+            font-size: 0.7rem;
+            color: var(--active-color);
+            background: rgba(96, 165, 250, 0.1);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ============================================================= */
+        /*  CODE EDITOR AREA (textarea + gutter)                         */
+        /* ============================================================= */
+        #editor-workspace {
+            flex-grow: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            background: var(--editor-bg);
+        }
+
+        #line-gutter {
+            width: 52px;
+            padding: 12px 8px 12px 0;
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--gutter-color);
+            background: var(--gutter-bg);
+            overflow: hidden;
+            user-select: none;
+            line-height: 1.6;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .gutter-line {
+            height: 1.6em;
+            cursor: pointer;
+            transition: color 0.1s;
+            padding-right: 6px;
+        }
+        .gutter-line:hover { color: var(--text-primary); }
+        .gutter-line.selected {
+            color: var(--active-color);
+            background: var(--editor-line-bg);
+            font-weight: 600;
+        }
+
+        #code-editor {
+            flex-grow: 1;
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+            -moz-tab-size: 4;
+            white-space: pre;
+            overflow: auto;
+            caret-color: var(--active-color);
+        }
+
+        #code-editor::placeholder {
+            color: #3f3f46;
+            font-family: 'Nunito', sans-serif;
+            font-style: italic;
+        }
+
+        /* ============================================================= */
+        /*  EDITOR STATUS BAR                                            */
+        /* ============================================================= */
+        #editor-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 14px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            background: rgba(0,0,0,0.15);
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        /* ============================================================= */
+        /*  CHAT PANE HEADER                                             */
+        /* ============================================================= */
+        #chat-header {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        #chat-header-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #chat-header-title::before {
+            content: '';
+            width: 8px; height: 8px;
+            background: var(--active-color);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--active-color);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ============================================================= */
+        /*  SETTINGS PANEL (Bento Grid) — Inherited from Codex           */
+        /* ============================================================= */
+        #settings-panel {
+            background: transparent;
+            padding: 12px 16px;
+            display: none;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        #settings-panel.visible { display: grid; }
+
+        .bento-card {
+            background: var(--bg-bento);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: var(--shadow-floating);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .settings-input {
+            flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color);
+            color: var(--text-primary); padding: 10px; border-radius: 10px; outline: none;
+            transition: border-color 0.2s; font-family: inherit; font-size: 0.8rem;
+        }
+        .settings-input:focus { border-color: var(--active-color); }
+
+        #system-instruction {
+            width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color);
+            color: var(--text-primary); padding: 12px; border-radius: 12px; resize: vertical;
+            min-height: 60px; font-family: inherit; outline: none; box-sizing: border-box;
+            transition: border-color 0.2s; font-size: 0.8rem;
+        }
+        #system-instruction:focus { border-color: var(--active-color); }
+
+        .settings-btn {
+            background: var(--bg-neumorphic); border: none; padding: 10px 16px;
+            border-radius: 10px; cursor: pointer; font-weight: 500; font-size: 0.8rem;
+            box-shadow: var(--shadow-raised); transition: all 0.2s; color: var(--text-primary);
+            font-family: inherit;
+        }
+        .settings-btn.primary { color: var(--active-color); }
+        .settings-btn:active { box-shadow: var(--shadow-inset); }
+
+        .settings-label {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        /* ============================================================= */
+        /*  CHAT MESSAGES — Inherited from Codex                         */
+        /* ============================================================= */
+        #chat-messages {
+            flex-grow: 1; overflow-y: auto; padding: 0.5rem 0.8rem; display: flex;
+            flex-direction: column; gap: 0.5rem; scroll-behavior: smooth;
+        }
+
+        .message {
+            max-width: 100%; width: 100%; line-height: 1.5; font-size: 0.8rem;
+        }
+        .user-message { display: flex; justify-content: flex-end; }
+
+        .user-content {
+            background-color: #2c2c35; color: var(--text-primary); padding: 10px 14px;
+            border-radius: 16px; border-bottom-right-radius: 4px; max-width: 90%;
+            position: relative; box-shadow: var(--shadow-floating); border: 1px solid var(--border-color);
+            font-size: 0.8rem; word-break: break-word;
+        }
+
+        .retry-msg-btn {
+            display: inline-flex; align-items: center; gap: 4px; margin-top: 10px;
+            padding: 4px 10px; background: var(--bg-neumorphic); border: none;
+            color: #a1a1aa; border-radius: 10px; font-size: 0.72rem; cursor: pointer;
+            transition: all 0.2s ease; float: right; clear: both; box-shadow: var(--shadow-raised);
+            font-family: inherit;
+        }
+        .retry-msg-btn:active { box-shadow: var(--shadow-inset); color: var(--text-primary); }
+
+        .bot-message { display: flex; justify-content: flex-start; flex-direction: column; }
+        .bot-content { color: #d4d4d8; width: 100%; }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger-color);
+            color: #fca5a5; padding: 12px; border-radius: 8px; margin-top: 10px; font-size: 0.8rem;
+        }
+
+        .bot-content code {
+            background-color: rgba(0,0,0,0.3); padding: 3px 6px; border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace; color: #f472b6; font-size: 0.85em;
+            border: 1px solid var(--border-color);
+        }
+        .bot-content pre {
+            position: relative; background-color: rgba(0,0,0,0.3); padding: 1.2rem;
+            border-radius: 12px; overflow-x: auto; margin: 12px 0;
+            border: 1px solid var(--border-color);
+        }
+        .bot-content pre code {
+            background: none; border: none; padding: 0; color: inherit;
+        }
+        .bot-content p { margin-top: 0; }
+
+        .copy-code-btn, .preview-html-btn {
+            position: absolute; top: 10px; background-color: var(--bg-neumorphic);
+            border: none; color: var(--text-secondary); padding: 4px 10px;
+            border-radius: 8px; font-size: 0.72rem; cursor: pointer; opacity: 0;
+            transition: all 0.2s ease; box-shadow: var(--shadow-raised); font-family: inherit;
+        }
+        .copy-code-btn { right: 10px; }
+        .preview-html-btn { right: 70px; }
+        .bot-content pre:hover .copy-code-btn, .bot-content pre:hover .preview-html-btn { opacity: 1; }
+        .copy-code-btn:active, .preview-html-btn:active {
+            box-shadow: var(--shadow-inset); color: var(--text-primary);
+        }
+
+        .grounding-sources {
+            font-size: 0.75rem; color: #a1a1aa; margin-top: 8px; padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .source-link { color: #60a5fa; text-decoration: none; margin-right: 6px; display: inline-block; }
+        .source-link:hover { text-decoration: underline; }
+
+        /* ============================================================= */
+        /*  APPROVE EDITS BUTTON (New for Code Editor)                   */
+        /* ============================================================= */
+        .approve-edits-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(96, 165, 250, 0.2));
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: var(--shadow-raised);
+            font-family: inherit;
+        }
+        .approve-edits-btn:hover {
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.35), rgba(96, 165, 250, 0.35));
+            box-shadow: 0 0 20px rgba(52, 211, 153, 0.2);
+        }
+        .approve-edits-btn:active { box-shadow: var(--shadow-inset); }
+        .approve-edits-btn.applied {
+            opacity: 0.5;
+            cursor: default;
+            border-color: var(--text-secondary);
+            color: var(--text-secondary);
+        }
+
+        .reject-edits-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 12px;
+            margin-left: 8px;
+            padding: 8px 14px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-raised);
+            font-family: inherit;
+        }
+        .reject-edits-btn:hover { background: rgba(239, 68, 68, 0.2); }
+        .reject-edits-btn:active { box-shadow: var(--shadow-inset); }
+
+        /* ============================================================= */
+        /*  CHAT INPUT AREA — Bento-style, Inherited from Codex          */
+        /* ============================================================= */
+        #chat-input-wrapper {
+            padding: 8px;
+            flex-shrink: 0;
+        }
+
+        .bento-input-module {
+            background: var(--bg-bento); border: 1px solid var(--border-color); border-radius: 14px;
+            position: relative; display: flex; flex-direction: column; box-shadow: var(--shadow-floating);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .bento-input-module:focus-within { border-color: rgba(255,255,255,0.2); }
+
+        #user-input {
+            width: 100%; background: transparent; border: none; color: white;
+            padding: 8px 12px; font-size: 0.82rem; resize: none; min-height: 34px;
+            max-height: 140px; outline: none; box-sizing: border-box; font-family: inherit;
+        }
+
+        #input-toolbar {
+            display: flex; justify-content: space-between; align-items: center; gap: 4px;
+            padding: 4px 6px; flex-wrap: wrap;
+        }
+
+        .toolbar-left, .toolbar-right { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+
+        .bento-pill {
+            display: flex; align-items: center; background: var(--bg-neumorphic);
+            border: 1px solid var(--border-color); border-radius: 12px; padding: 2px; gap: 2px;
+            box-shadow: var(--shadow-raised);
+        }
+
+        .icon-btn {
+            background: transparent; border: none; cursor: pointer; padding: 5px;
+            border-radius: 8px; color: var(--text-secondary); transition: all 0.2s ease;
+            display: flex; align-items: center; justify-content: center; font-family: inherit;
+        }
+        .icon-btn:active { box-shadow: var(--shadow-inset); background: rgba(0,0,0,0.1); color: var(--text-primary); }
+        .icon-btn svg { width: 14px; height: 14px; fill: currentColor; }
+        .icon-btn.active { color: var(--active-color); box-shadow: var(--shadow-inset); background: rgba(0,0,0,0.1); }
+
+        #send-button { opacity: 0.5; cursor: not-allowed; }
+        #send-button.active { opacity: 1; cursor: pointer; color: var(--text-primary); }
+        #send-button.abort { color: var(--danger-color); opacity: 1; cursor: pointer; }
+
+        #model-selector, #key-selector {
+            background-color: transparent; color: var(--text-secondary); border: none;
+            padding: 5px 8px; border-radius: 8px; font-size: 0.72rem; outline: none;
+            cursor: pointer; transition: all 0.2s ease; appearance: none; -webkit-appearance: none;
+            font-family: inherit;
+        }
+        #model-selector option, #key-selector option {
+            background: var(--bg-neumorphic); color: var(--text-primary);
+        }
+
+        /* ============================================================= */
+        /*  SCROLLBAR — Inherited                                        */
+        /* ============================================================= */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+
+        /* ============================================================= */
+        /*  GLASSMORPHISM MODAL (PIN Entry) — Inherited from Codex       */
+        /* ============================================================= */
+        .glass-modal-overlay {
+            display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            align-items: center; justify-content: center;
+        }
+        .glass-modal-box {
+            background-color: var(--bg-spatial); padding: 30px; border: 1px solid var(--border-color);
+            border-radius: 24px; text-align: center; width: 320px; box-shadow: var(--shadow-spatial);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+        }
+
+        /* HTML Preview Modal — Inherited from Codex */
+        #html-preview-modal {
+            display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        #html-preview-modal .modal-content {
+            background-color: var(--bg-spatial); margin: 5% auto; padding: 20px;
+            border: 1px solid var(--border-color); width: 80%; height: 80%; border-radius: 24px;
+            display: flex; flex-direction: column; box-shadow: var(--shadow-spatial);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+        }
+        #html-preview-modal .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 10px; border-bottom: 1px solid var(--border-color);
+        }
+        #html-preview-modal .modal-close {
+            color: var(--text-secondary); font-size: 28px; font-weight: bold; cursor: pointer;
+        }
+        #html-preview-modal .modal-close:hover { color: white; }
+        #html-preview-modal #preview-iframe {
+            width: 100%; height: 100%; border: none; margin-top: 15px;
+            background-color: white; border-radius: 12px;
+        }
+
+        /* ============================================================= */
+        /*  SELECTION HIGHLIGHT EFFECT                                   */
+        /* ============================================================= */
+        .selection-info {
+            font-size: 0.72rem;
+            color: var(--active-color);
+            background: rgba(96, 165, 250, 0.1);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ============================================================= */
+        /*  DIFF PREVIEW                                                 */
+        /* ============================================================= */
+        .diff-preview {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .diff-line-add { color: var(--success-color); }
+        .diff-line-del { color: var(--danger-color); text-decoration: line-through; opacity: 0.7; }
+        .diff-line-ctx { color: var(--text-secondary); }
+        .diff-header { color: var(--active-color); font-weight: 600; margin-bottom: 4px; }
+
+        /* ============================================================= */
+        /*  RESPONSIVE                                                   */
+        /* ============================================================= */
+        @media (max-width: 900px) {
+            #split-container { flex-direction: column; }
+            #pane-resizer { width: 100%; height: 8px; cursor: row-resize; }
+            #pane-resizer::after { width: 40px; height: 2px; }
+            #editor-pane, #chat-pane { min-width: unset; min-height: 200px; }
+            .header-center { position: static; transform: none; }
+        }
+
+        /* ============================================================= */
+        /*  MICRO-ANIMATIONS                                             */
+        /* ============================================================= */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message { animation: fadeIn 0.25s ease-out; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .loading-indicator {
+            background: linear-gradient(90deg, var(--bg-bento), rgba(96, 165, 250, 0.1), var(--bg-bento));
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-spatial);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 12px 20px;
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            box-shadow: var(--shadow-spatial);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            z-index: 300;
+            animation: fadeIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast.success { border-color: var(--success-color); }
+        .toast.error { border-color: var(--danger-color); }
+        .toast.warning { border-color: var(--warning-color); }
+    </style>
+</head>
+
+<body>
+
+    <!-- ============================================================= -->
+    <!-- TOP HEADER BAR — Branding, Mode Toggle, Settings               -->
+    <!-- ============================================================= -->
+    <div id="app-header">
+        <div class="header-left">
+            <div id="app-title"><span>AuraCode</span> Editor</div>
+        </div>
+
+        <!-- Mode Toggle — Gemini / Gemma (Inherited) -->
+        <div class="header-center">
+            <span class="mode-label active" id="gemini-label">Gemini</span>
+            <label class="switch">
+                <input type="checkbox" id="mode-toggle">
+                <span class="slider"></span>
+            </label>
+            <span class="mode-label" id="gemma-label">Gemma</span>
+        </div>
+
+        <div class="header-right">
+            <button class="header-btn" id="lock-btn" title="Lock API Keys" style="display: none;">🔒 Lock</button>
+            <button class="header-btn" id="settings-toggle">⚙ Settings</button>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- SPLIT-PANE CONTAINER                                           -->
+    <!-- ============================================================= -->
+    <div id="split-container">
+
+        <!-- ======================================================= -->
+        <!-- LEFT PANE — The Code Editor                              -->
+        <!-- ======================================================= -->
+        <div id="editor-pane">
+            <!-- Tab Bar -->
+            <div id="editor-tab-bar">
+                <!-- Tabs are dynamically inserted here -->
+                <button class="add-tab-btn" id="add-tab-btn" title="New file">+</button>
+            </div>
+
+            <!-- Editor Toolbar -->
+            <div id="editor-toolbar">
+                <div class="editor-toolbar-left">
+                    <button class="editor-toolbar-btn" id="open-file-btn" title="Open File (Ctrl+O)">
+                        📂 Open
+                    </button>
+                    <button class="editor-toolbar-btn" id="save-file-btn" title="Save File (Ctrl+S)">
+                        💾 Save
+                    </button>
+                    <input type="file" id="hidden-file-input" style="display: none;" multiple>
+                    <button class="editor-toolbar-btn" id="send-selection-btn" title="Send selected lines to AI">
+                        📤 Send Selection
+                    </button>
+                    <button class="editor-toolbar-btn" id="send-full-btn" title="Send full file to AI">
+                        📄 Send Full File
+                    </button>
+                    <span class="selection-info" id="selection-info" style="display: none;"></span>
+                </div>
+                <div class="editor-toolbar-right">
+                    <span class="lang-badge" id="lang-badge">TXT</span>
+                    <span class="line-indicator" id="line-indicator">Ln 1, Col 1</span>
+                </div>
+            </div>
+
+            <!-- Code Workspace (Gutter + Textarea) -->
+            <div id="editor-workspace">
+                <div id="line-gutter"></div>
+                <textarea id="code-editor" spellcheck="false"
+                    placeholder="Start coding here, or create a new file with the + tab above..."></textarea>
+            </div>
+
+            <!-- Status Bar -->
+            <div id="editor-status">
+                <span id="status-left">Ready</span>
+                <span id="status-right">UTF-8 · LF</span>
+            </div>
+        </div>
+
+        <!-- ======================================================= -->
+        <!-- RESIZER HANDLE                                           -->
+        <!-- ======================================================= -->
+        <div id="pane-resizer"></div>
+
+        <!-- ======================================================= -->
+        <!-- RIGHT PANE — The AI Chat Bot                             -->
+        <!-- ======================================================= -->
+        <div id="chat-pane">
+            <!-- Chat Header -->
+            <div id="chat-header">
+                <div id="chat-header-title">AI Assistant</div>
+                <button class="header-btn" id="clear-chat-btn">🗑 Clear</button>
+            </div>
+
+            <!-- Settings Panel (Toggled) -->
+            <div id="settings-panel">
+                <!-- API Keys Card -->
+                <div class="bento-card">
+                    <span class="settings-label">API Keys (AES-256 Encrypted)</span>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="password" id="api-key-1-input" placeholder="API Key 1" class="settings-input">
+                        <input type="password" id="api-key-2-input" placeholder="API Key 2" class="settings-input">
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="password" id="pin-input" placeholder="Passphrase (min 4 chars)" minlength="4"
+                            class="settings-input" style="width: 160px; flex: none; text-align: center; letter-spacing: 1px;">
+                        <button id="save-keys-btn" class="settings-btn primary">Save & Encrypt</button>
+                        <button id="unlock-keys-btn" class="settings-btn">Unlock</button>
+                        <button id="forget-keys-btn" class="settings-btn" style="color: var(--danger-color);">Forget Keys</button>
+                        <span id="crypto-msg" style="font-size: 0.72rem; color: var(--warning-color); margin-left: auto;"></span>
+                    </div>
+                </div>
+
+                <!-- System Instruction Card -->
+                <div class="bento-card" id="system-instruction-container">
+                    <span class="settings-label">System Instruction</span>
+                    <textarea id="system-instruction"
+                        placeholder="E.g., You are an expert software engineer..."></textarea>
+                    <div style="font-size: 0.7rem; color: #52525b;">Changes apply to the next message.</div>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div id="chat-messages">
+                <!-- Messages dynamically inserted here -->
+            </div>
+
+            <!-- Chat Input (Bento Grid) -->
+            <div id="chat-input-wrapper">
+                <div class="bento-input-module">
+                    <textarea id="user-input" placeholder="Describe the changes you want..." rows="1"></textarea>
+                </div>
+
+                <!-- Toolbar (Bottom of input) -->
+                <div id="input-toolbar">
+                    <div class="toolbar-left">
+                        <!-- Tool Toggles Pill -->
+                        <div class="bento-pill">
+                            <button class="icon-btn" id="google-search-btn" title="Google Search">
+                                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                            </button>
+                            <button class="icon-btn" id="code-exec-btn" title="Code Execution">
+                                <svg viewBox="0 0 24 24"><path d="M20,19V7H4V19H20M20,3A2,2 0 0,1 22,5V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V5C2,3.89 2.9,3 4,3H20M13,17V15H18V17H13M9.58,13L5.57,9H8.4L11.7,12.3C12.09,12.69 12.09,13.33 11.7,13.72L8.42,17H5.59L9.58,13Z"/></svg>
+                            </button>
+                            <button class="icon-btn" id="url-toggle-btn" title="URL Context">
+                                <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Thinking Pill -->
+                        <div class="bento-pill">
+                            <button class="icon-btn" id="thinking-low-btn" title="Low-Budget Thinking"
+                                style="font-weight: bold; font-size: 0.72rem;">T(L)</button>
+                            <button class="icon-btn" id="thinking-high-btn" title="High-Budget Thinking"
+                                style="font-weight: bold; font-size: 0.72rem;">T(H)</button>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-right">
+                        <!-- Model & Key Selectors Pill -->
+                        <div class="bento-pill">
+                            <select id="key-selector">
+                                <option value="key1">Key 1</option>
+                                <option value="key2">Key 2</option>
+                            </select>
+                            <select id="model-selector">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+
+                        <!-- Send Button Pill -->
+                        <div class="bento-pill">
+                            <button class="icon-btn" id="send-button" disabled>
+                                <svg class="send-icon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                <svg class="stop-icon" viewBox="0 0 24 24" style="display:none"><path d="M6 6h12v12H6z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- HTML PREVIEW MODAL — Inherited from Codex                      -->
+    <!-- ============================================================= -->
+    <div id="html-preview-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>HTML Preview</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <iframe id="preview-iframe" sandbox="allow-scripts"></iframe>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- PIN ENTRY MODAL — Inherited from Codex (AES-GCM Encryption)    -->
+    <!-- ============================================================= -->
+    <div id="pin-modal" class="glass-modal-overlay" style="display: none;">
+        <div class="glass-modal-box">
+            <h3 style="margin-top: 0; color: var(--text-primary);">🔐 Unlock API Keys</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px;">
+                Enter your passphrase to decrypt keys.
+            </p>
+            <input type="password" id="startup-pin" minlength="4" placeholder="Passphrase"
+                class="settings-input"
+                style="width: 100%; box-sizing: border-box; text-align: center; letter-spacing: 2px; font-size: 1.1rem; margin-bottom: 16px;">
+            <button id="startup-unlock-btn" class="settings-btn primary"
+                style="width: 100%; font-size: 0.95rem;">Unlock</button>
+            <div id="startup-crypto-msg"
+                style="color: var(--danger-color); font-size: 0.78rem; margin-top: 12px; min-height: 15px;"></div>
+            <button id="startup-close-btn"
+                style="background: transparent; color: var(--text-secondary); border: none; margin-top: 16px; cursor: pointer; font-size: 0.82rem; font-family: inherit;">
+                Continue without unlocking
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ============================================================= -->
+    <!-- MAIN APPLICATION SCRIPT                                        -->
+    <!-- ============================================================= -->
+    <script type="module">
+        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+        // ============================================================= //
+        //  INITIALIZE MARKED EXTENSIONS (KaTeX for math rendering)      //
+        // ============================================================= //
+        if (window.markedKatex) {
+            marked.use(window.markedKatex({ throwOnError: false, nonStandard: true }));
+        }
+
+        // ============================================================= //
+        //  HELPERS — Inherited from AuraChat Codex                       //
+        // ============================================================= //
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;',
+                "'": '&#39;', '"': '&quot;'
+            }[tag]));
+        }
+
+        /** DOMPurify config — allows KaTeX math tags through sanitizer */
+        const domPurifyConfig = {
+            ADD_TAGS: ['math', 'menclose', 'merror', 'mfrac', 'mi', 'mlabeledtr', 'mmultiscripts',
+                'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace',
+                'msqrt', 'mstyle', 'msub', 'msubsup', 'msup', 'mtable', 'mtd', 'mtext', 'mtr',
+                'munder', 'munderover', 'semantics', 'annotation', 'annotation-xml'],
+            ADD_ATTR: ['target', 'class', 'style', 'display', 'xmlns']
+        };
+
+        /** Show a toast notification */
+        function showToast(msg, type = 'success', duration = 2500) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            let icon = '✅';
+            if (type === 'error') icon = '❌';
+            else if (type === 'warning') icon = '⚠️';
+            toast.innerHTML = `${icon} ${escapeHTML(msg)}`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // ============================================================= //
+        //  MODEL DEFINITIONS — Inherited from AuraChat Codex             //
+        // ============================================================= //
+        const GEMINI_MODELS = [
+            { value: "gemini-3.1-flash-lite-preview", label: "Flash Lite 3.1" },
+            { value: "gemini-2.5-flash-lite", label: "Flash Lite 2.5" },
+            { value: "gemini-2.5-flash", label: "Flash 2.5" },
+            { value: "gemini-2.5-pro", label: "Pro 2.5" },
+            { value: "gemma-4-26b-a4b-it", label: "Gemma 4 26B A4B IT" }
+        ];
+
+        const GEMMA_MODELS = [
+            { value: "gemma-3-1b-it", label: "Gemma 3 1B IT" },
+            { value: "gemma-3-4b-it", label: "Gemma 3 4B IT" },
+            { value: "gemma-3-12b-it", label: "Gemma 3 12B IT" },
+            { value: "gemma-3-27b-it", label: "Gemma 3 27B IT" },
+            { value: "gemma-3n-e2b-it", label: "Gemma 3N E2B IT" },
+            { value: "gemma-3n-e4b-it", label: "Gemma 3N E4B IT" }
+        ];
+
+        // ============================================================= //
+        //  LOCALSTORAGE KEY MANAGEMENT — Versioned prefixes              //
+        // ============================================================= //
+        const LS_PREFIX = 'auracode_v1_';
+        const LS_KEYS = {
+            model: LS_PREFIX + 'model',
+            isGemma: LS_PREFIX + 'is_gemma',
+            systemInstruction: LS_PREFIX + 'system_instruction',
+            useUrlContext: LS_PREFIX + 'use_url_context',
+            useCodeExecution: LS_PREFIX + 'use_code_execution',
+            useGoogleSearch: LS_PREFIX + 'use_google_search',
+            thinkingMode: LS_PREFIX + 'thinking_mode',
+            encryptedKeys: LS_PREFIX + 'encrypted_keys',
+            resizerPercent: LS_PREFIX + 'resizer_percent',
+        };
+
+        // ============================================================= //
+        //  AES-GCM 256-BIT CRYPTO                                        //
+        // ============================================================= //
+        let decryptedKeys = { key1: "", key2: "" };
+        let activePin = null;
+        const cryptoParams = { name: "AES-GCM", length: 256 };
+
+        // --- Auto-lock and lockout state ---
+        const AUTO_LOCK_MS = 5 * 60 * 1000; // 5 minutes
+        let _idleTimer = null;
+        const LOCKOUT_LS_KEY = LS_PREFIX + 'lockout';
+        const MAX_FAILED_ATTEMPTS = 5;
+
+        /** Get lockout state from localStorage */
+        function getLockoutState() {
+            try {
+                const raw = localStorage.getItem(LOCKOUT_LS_KEY);
+                if (!raw) return { attempts: 0, lockedUntil: 0 };
+                return JSON.parse(raw);
+            } catch { return { attempts: 0, lockedUntil: 0 }; }
+        }
+
+        /** Save lockout state to localStorage */
+        function setLockoutState(state) {
+            localStorage.setItem(LOCKOUT_LS_KEY, JSON.stringify(state));
+        }
+
+        /** Record a failed attempt and return the lockout message if locked out */
+        function recordFailedAttempt() {
+            const state = getLockoutState();
+            state.attempts++;
+            if (state.attempts >= MAX_FAILED_ATTEMPTS) {
+                // Exponential backoff: 30s * 2^(excess attempts)
+                const excess = state.attempts - MAX_FAILED_ATTEMPTS;
+                const lockoutSec = 30 * Math.pow(2, Math.min(excess, 6)); // max ~32 min
+                state.lockedUntil = Date.now() + lockoutSec * 1000;
+                setLockoutState(state);
+                return `Too many attempts. Locked for ${lockoutSec}s.`;
+            }
+            setLockoutState(state);
+            return null;
+        }
+
+        /** Check if currently locked out. Returns remaining seconds or 0. */
+        function checkLockout() {
+            const state = getLockoutState();
+            if (state.lockedUntil && Date.now() < state.lockedUntil) {
+                return Math.ceil((state.lockedUntil - Date.now()) / 1000);
+            }
+            return 0;
+        }
+
+        /** Clear lockout on successful unlock */
+        function clearLockout() {
+            localStorage.removeItem(LOCKOUT_LS_KEY);
+        }
+
+        /** Lock the app — wipe keys from memory, show PIN modal */
+        function lockApp() {
+            decryptedKeys = { key1: "", key2: "" };
+            activePin = null;
+            genAI = null;
+            model = null;
+            chat = null;
+            els.apiKey1Input.value = '';
+            els.apiKey2Input.value = '';
+            els.lockBtn.style.display = 'none';
+            clearTimeout(_idleTimer);
+
+            // Only show modal if there are encrypted keys to unlock
+            if (localStorage.getItem(LS_KEYS.encryptedKeys)) {
+                els.pinModal.style.display = 'flex';
+                els.startupPin.value = '';
+                els.startupPin.focus();
+                els.startupCryptoMsg.innerText = '';
+            }
+            showToast('API keys locked', 'warning');
+        }
+
+        /** Reset the idle timer — called on user interaction */
+        function resetIdleTimer() {
+            clearTimeout(_idleTimer);
+            // Only set the timer if keys are currently unlocked
+            if (decryptedKeys.key1 || decryptedKeys.key2) {
+                _idleTimer = setTimeout(() => lockApp(), AUTO_LOCK_MS);
+            }
+        }
+
+        /** Start tracking user activity for auto-lock */
+        function startIdleTracking() {
+            const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+            events.forEach(evt => document.addEventListener(evt, resetIdleTimer, { passive: true }));
+            resetIdleTimer();
+        }
+
+        /** Validate passphrase (min 4 characters, alphanumeric + symbols allowed) */
+        function validatePassphrase(passphrase) {
+            if (!passphrase || passphrase.length < 4) {
+                return 'Passphrase must be at least 4 characters.';
+            }
+            return null; // Valid
+        }
+
+        /** Derive a 256-bit AES-GCM key from a passphrase using PBKDF2 */
+        async function getCryptoKey(pin, salt) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw", enc.encode(pin), { name: "PBKDF2" }, false, ["deriveKey"]
+            );
+            return await crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+                keyMaterial, cryptoParams, false, ["encrypt", "decrypt"]
+            );
+        }
+
+        /** Encrypt an object with AES-GCM using a passphrase */
+        async function encryptData(pin, dataObj) {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await getCryptoKey(pin, salt);
+            const enc = new TextEncoder();
+            const encrypted = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv }, key, enc.encode(JSON.stringify(dataObj))
+            );
+            return {
+                salt: Array.from(salt),
+                iv: Array.from(iv),
+                data: Array.from(new Uint8Array(encrypted))
+            };
+        }
+
+        /** Decrypt AES-GCM encrypted data using a passphrase. Returns null on failure. */
+        async function decryptData(pin, encryptedObj) {
+            try {
+                const salt = new Uint8Array(encryptedObj.salt);
+                const iv = new Uint8Array(encryptedObj.iv);
+                const data = new Uint8Array(encryptedObj.data);
+                const key = await getCryptoKey(pin, salt);
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: iv }, key, data
+                );
+                return JSON.parse(new TextDecoder().decode(decrypted));
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ============================================================= //
+        //  APPLICATION STATE                                             //
+        // ============================================================= //
+        let genAI = null;
+        let model = null;
+        let chat = null;
+        let abortController = null;
+        let chatHistory = []; // { role, text, html, edits? }
+        const pendingEditsMap = new Map(); // Store edit sets
+
+        /**
+         * FILE TABS STATE
+         * Each tab: { id, name, language, content, cursorPos, dirty }
+         */
+        let fileTabs = [];
+        let activeTabId = null;
+
+        /** One-time migration from old unversioned keys to v1-prefixed keys */
+        function migrateLocalStorageKeys() {
+            const migrations = [
+                ['auracode_last_model', LS_KEYS.model],
+                ['auracode_is_gemma', LS_KEYS.isGemma],
+                ['gemini_encrypted_keys', LS_KEYS.encryptedKeys],
+            ];
+            for (const [oldKey, newKey] of migrations) {
+                const val = localStorage.getItem(oldKey);
+                if (val !== null && localStorage.getItem(newKey) === null) {
+                    localStorage.setItem(newKey, val);
+                    localStorage.removeItem(oldKey);
+                }
+            }
+        }
+
+        // Run migration immediately
+        migrateLocalStorageKeys();
+
+        // ============================================================= //
+        //  INDEXEDDB PERSISTENCE — Debounced auto-save for tabs + chat   //
+        // ============================================================= //
+        const IDB_NAME = 'auracode_editor_db';
+        const IDB_VERSION = 2;
+        const IDB_STORE = 'file_tabs';
+        const IDB_CHAT_STORE = 'chat_history';
+        const IDB_EDITS_STORE = 'edit_sets';
+        let _idb = null;
+        let _autoSaveTimer = null;
+
+        /** Open (or create) the IndexedDB database */
+        function openIDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(IDB_STORE)) {
+                        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains(IDB_CHAT_STORE)) {
+                        db.createObjectStore(IDB_CHAT_STORE, { keyPath: 'idx' });
+                    }
+                    if (!db.objectStoreNames.contains(IDB_EDITS_STORE)) {
+                        db.createObjectStore(IDB_EDITS_STORE, { keyPath: 'editId' });
+                    }
+                };
+                req.onsuccess = (e) => {
+                    _idb = e.target.result;
+                    resolve(_idb);
+                };
+                req.onerror = (e) => {
+                    console.warn('IndexedDB open error:', e);
+                    reject(e);
+                };
+            });
+        }
+
+        /** Persist all tabs + activeTabId to IndexedDB */
+        async function persistTabs() {
+            try {
+                if (!_idb) await openIDB();
+                const tx = _idb.transaction(IDB_STORE, 'readwrite');
+                const store = tx.objectStore(IDB_STORE);
+                // Clear then write all — simple and correct
+                store.clear();
+                // Save a metadata record alongside tab records
+                store.put({ id: '__meta__', activeTabId, tabOrder: fileTabs.map(t => t.id) });
+                for (const tab of fileTabs) {
+                    store.put({ id: tab.id, name: tab.name, language: tab.language, content: tab.content, cursorPos: tab.cursorPos });
+                }
+                await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; });
+            } catch (e) {
+                console.warn('IndexedDB persist error:', e);
+            }
+        }
+
+        /** Restore tabs from IndexedDB. Returns true if tabs were restored. */
+        async function restoreTabs() {
+            try {
+                if (!_idb) await openIDB();
+                const tx = _idb.transaction(IDB_STORE, 'readonly');
+                const store = tx.objectStore(IDB_STORE);
+                const allRecords = await new Promise((resolve, reject) => {
+                    const req = store.getAll();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = reject;
+                });
+                if (!allRecords || allRecords.length <= 1) return false; // Only __meta__ or empty
+                const meta = allRecords.find(r => r.id === '__meta__');
+                const tabRecords = allRecords.filter(r => r.id !== '__meta__');
+                if (tabRecords.length === 0) return false;
+
+                // Restore in saved order if possible
+                const ordered = meta?.tabOrder
+                    ? meta.tabOrder.map(id => tabRecords.find(r => r.id === id)).filter(Boolean)
+                    : tabRecords;
+
+                for (const rec of ordered) {
+                    fileTabs.push({ id: rec.id, name: rec.name, language: rec.language, content: rec.content, cursorPos: rec.cursorPos || 0, dirty: false });
+                }
+                const restoredActiveId = meta?.activeTabId && fileTabs.find(t => t.id === meta.activeTabId)
+                    ? meta.activeTabId
+                    : fileTabs[0].id;
+                activateTab(restoredActiveId);
+                renderTabs();
+                return true;
+            } catch (e) {
+                console.warn('IndexedDB restore error:', e);
+                return false;
+            }
+        }
+
+        /** Schedule a debounced auto-save (2 seconds after last edit) */
+        function scheduleAutoSave() {
+            clearTimeout(_autoSaveTimer);
+            _autoSaveTimer = setTimeout(() => persistTabs(), 2000);
+        }
+
+        // ============================================================= //
+        //  PER-TAB UNDO STACK — for reverting applied edit sets          //
+        // ============================================================= //
+        const UNDO_STACK_LIMIT = 50;
+        const undoStacks = new Map(); // tabId -> [{ content, cursorPos }]
+
+        /** Push a snapshot onto the undo stack for the given tab */
+        function pushUndo(tabId, content, cursorPos) {
+            if (!undoStacks.has(tabId)) undoStacks.set(tabId, []);
+            const stack = undoStacks.get(tabId);
+            stack.push({ content, cursorPos });
+            if (stack.length > UNDO_STACK_LIMIT) stack.shift();
+        }
+
+        /** Pop the last undo snapshot for the active tab. Returns null if empty. */
+        function popUndo(tabId) {
+            const stack = undoStacks.get(tabId);
+            if (!stack || stack.length === 0) return null;
+            return stack.pop();
+        }
+
+        // ============================================================= //
+        //  DOM ELEMENT REFERENCES                                        //
+        // ============================================================= //
+        const els = {
+            // Header
+            modeToggle: document.getElementById('mode-toggle'),
+            geminiLabel: document.getElementById('gemini-label'),
+            gemmaLabel: document.getElementById('gemma-label'),
+            settingsToggle: document.getElementById('settings-toggle'),
+
+            // Editor Pane
+            tabBar: document.getElementById('editor-tab-bar'),
+            addTabBtn: document.getElementById('add-tab-btn'),
+            codeEditor: document.getElementById('code-editor'),
+            lineGutter: document.getElementById('line-gutter'),
+            lineIndicator: document.getElementById('line-indicator'),
+            selectionInfo: document.getElementById('selection-info'),
+            langBadge: document.getElementById('lang-badge'),
+            statusLeft: document.getElementById('status-left'),
+            statusRight: document.getElementById('status-right'),
+            sendSelBtn: document.getElementById('send-selection-btn'),
+            sendFullBtn: document.getElementById('send-full-btn'),
+            openFileBtn: document.getElementById('open-file-btn'),
+            saveFileBtn: document.getElementById('save-file-btn'),
+            hiddenFileInput: document.getElementById('hidden-file-input'),
+            editorWorkspace: document.getElementById('editor-workspace'),
+
+            // Chat Pane
+            chatMsgs: document.getElementById('chat-messages'),
+            userInput: document.getElementById('user-input'),
+            sendBtn: document.getElementById('send-button'),
+            clearChatBtn: document.getElementById('clear-chat-btn'),
+            modelSel: document.getElementById('model-selector'),
+            keySel: document.getElementById('key-selector'),
+            sysInstr: document.getElementById('system-instruction'),
+            settingsPanel: document.getElementById('settings-panel'),
+            sysInstrContainer: document.getElementById('system-instruction-container'),
+
+            // Tool Toggles
+            googleSearchBtn: document.getElementById('google-search-btn'),
+            codeExecBtn: document.getElementById('code-exec-btn'),
+            urlToggleBtn: document.getElementById('url-toggle-btn'),
+            thinkingLowBtn: document.getElementById('thinking-low-btn'),
+            thinkingHighBtn: document.getElementById('thinking-high-btn'),
+
+            // Crypto (PIN Modal & Settings)
+            apiKey1Input: document.getElementById('api-key-1-input'),
+            apiKey2Input: document.getElementById('api-key-2-input'),
+            pinInput: document.getElementById('pin-input'),
+            saveKeysBtn: document.getElementById('save-keys-btn'),
+            unlockKeysBtn: document.getElementById('unlock-keys-btn'),
+            forgetKeysBtn: document.getElementById('forget-keys-btn'),
+            cryptoMsg: document.getElementById('crypto-msg'),
+            pinModal: document.getElementById('pin-modal'),
+            startupPin: document.getElementById('startup-pin'),
+            startupUnlockBtn: document.getElementById('startup-unlock-btn'),
+            startupCloseBtn: document.getElementById('startup-close-btn'),
+            startupCryptoMsg: document.getElementById('startup-crypto-msg'),
+            lockBtn: document.getElementById('lock-btn'),
+
+            // Modals
+            htmlPreviewModal: document.getElementById('html-preview-modal'),
+            modalCloseBtn: document.querySelector('#html-preview-modal .modal-close'),
+            previewIframe: document.getElementById('preview-iframe'),
+
+            // Resizer
+            resizer: document.getElementById('pane-resizer'),
+            editorPane: document.getElementById('editor-pane'),
+            chatPane: document.getElementById('chat-pane'),
+            splitContainer: document.getElementById('split-container'),
+        };
+
+        // ============================================================= //
+        //  CONFIG STATE — Persisted per-session                          //
+        // ============================================================= //
+        let sessionConfig = {
+            model: localStorage.getItem(LS_KEYS.model) || 'gemini-2.5-flash',
+            systemInstruction: localStorage.getItem(LS_KEYS.systemInstruction) || '',
+            useUrlContext: localStorage.getItem(LS_KEYS.useUrlContext) === 'true',
+            useCodeExecution: localStorage.getItem(LS_KEYS.useCodeExecution) === 'true',
+            useGoogleSearch: localStorage.getItem(LS_KEYS.useGoogleSearch) === 'true',
+            thinkingMode: localStorage.getItem(LS_KEYS.thinkingMode) || 'none'
+        };
+
+        // ============================================================= //
+        //  LANGUAGE DETECTION (from file extension)                      //
+        // ============================================================= //
+        const LANG_MAP = {
+            'js': 'JavaScript', 'ts': 'TypeScript', 'jsx': 'JSX', 'tsx': 'TSX',
+            'py': 'Python', 'rb': 'Ruby', 'go': 'Go', 'rs': 'Rust',
+            'java': 'Java', 'kt': 'Kotlin', 'c': 'C', 'cpp': 'C++', 'h': 'C/C++',
+            'cs': 'C#', 'php': 'PHP', 'swift': 'Swift',
+            'html': 'HTML', 'css': 'CSS', 'scss': 'SCSS', 'less': 'LESS',
+            'json': 'JSON', 'yaml': 'YAML', 'yml': 'YAML', 'toml': 'TOML',
+            'xml': 'XML', 'svg': 'SVG',
+            'md': 'Markdown', 'txt': 'Text',
+            'sh': 'Shell', 'bash': 'Bash', 'zsh': 'Zsh',
+            'sql': 'SQL', 'graphql': 'GraphQL',
+            'dockerfile': 'Docker', 'makefile': 'Makefile',
+        };
+
+        function detectLanguage(filename) {
+            const lowerName = filename.toLowerCase();
+            if (lowerName === 'dockerfile') return 'Docker';
+            if (lowerName === 'makefile') return 'Makefile';
+            if (lowerName === 'gemfile') return 'Ruby';
+            const ext = lowerName.split('.').pop();
+            return LANG_MAP[ext] || 'Text';
+        }
+
+        // ============================================================= //
+        //  FILE TAB MANAGEMENT                                          //
+        // ============================================================= //
+
+        /** Create a new file tab */
+        function createTab(name = 'untitled.js', content = '') {
+            const id = 'tab_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+            const tab = { id, name, language: detectLanguage(name), content, cursorPos: 0, dirty: false };
+            fileTabs.push(tab);
+            activateTab(id);
+            renderTabs();
+            scheduleAutoSave();
+            return tab;
+        }
+
+        /** Switch to a tab by ID */
+        function activateTab(id) {
+            if (activeTabId === id) return;
+
+            // Save current tab state before switching
+            if (activeTabId) {
+                const current = fileTabs.find(t => t.id === activeTabId);
+                if (current) {
+                    current.content = els.codeEditor.value;
+                    current.cursorPos = els.codeEditor.selectionStart;
+                }
+            }
+
+            activeTabId = id;
+            const tab = fileTabs.find(t => t.id === id);
+            if (tab) {
+                els.codeEditor.value = tab.content;
+                els.langBadge.textContent = tab.language;
+                // Clamp cursor position to prevent setSelectionRange from throwing
+                const clampedPos = Math.min(tab.cursorPos, els.codeEditor.value.length);
+                els.codeEditor.setSelectionRange(clampedPos, clampedPos);
+                els.codeEditor.focus();
+                updateLineGutter();
+                updateCursorInfo();
+            }
+            renderTabs();
+        }
+
+        /** Close a tab — prompts if tab has unsaved changes */
+        function closeTab(id) {
+            const idx = fileTabs.findIndex(t => t.id === id);
+            if (idx === -1) return;
+
+            const tab = fileTabs[idx];
+            // Warn if the tab has unsaved (dirty) content
+            if (tab.dirty) {
+                if (!confirm(`"${tab.name}" has unsaved changes. Close anyway?`)) return;
+            }
+
+            fileTabs.splice(idx, 1);
+
+            if (fileTabs.length === 0) {
+                createTab();
+            } else if (activeTabId === id) {
+                const newIdx = Math.min(idx, fileTabs.length - 1);
+                activateTab(fileTabs[newIdx].id);
+            }
+            renderTabs();
+            scheduleAutoSave();
+        }
+
+        /** Render all tabs in the tab bar */
+        function renderTabs() {
+            // Remove existing tab buttons (keep the + button and any active rename inputs)
+            els.tabBar.querySelectorAll('button.editor-tab').forEach(t => t.remove());
+
+            fileTabs.forEach(tab => {
+                const tabEl = document.createElement('button');
+                tabEl.className = `editor-tab ${tab.id === activeTabId ? 'active' : ''}`;
+                tabEl.innerHTML = `
+                    <span>${escapeHTML(tab.name)}</span>
+                    <span class="tab-close" data-tab-id="${tab.id}" title="Close">×</span>
+                `;
+                tabEl.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('tab-close')) {
+                        closeTab(e.target.dataset.tabId);
+                    } else {
+                        activateTab(tab.id);
+                    }
+                });
+                
+                tabEl.addEventListener('dblclick', (e) => {
+                    if (e.target.classList.contains('tab-close')) return;
+                    const span = tabEl.querySelector('span');
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = tab.name;
+                    input.style.background = 'transparent';
+                    input.style.color = 'var(--text-primary)';
+                    input.style.border = 'none';
+                    input.style.outline = 'none';
+                    input.style.fontFamily = 'inherit';
+                    input.style.fontSize = 'inherit';
+                    input.style.width = Math.max(50, span.offsetWidth) + 'px';
+                    
+                    const handleRename = () => {
+                        const newName = input.value.trim();
+                        if (newName && newName !== tab.name) {
+                            tab.name = newName;
+                            tab.language = detectLanguage(newName);
+                            if (tab.id === activeTabId) els.langBadge.textContent = tab.language;
+                        }
+                        renderTabs();
+                    };
+                    
+                    input.addEventListener('blur', handleRename);
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') handleRename();
+                        if (e.key === 'Escape') {
+                            input.value = tab.name;
+                            handleRename();
+                        }
+                    });
+                    
+                    tabEl.replaceChild(input, span);
+                    input.focus();
+                    input.select();
+                });
+                
+                els.tabBar.insertBefore(tabEl, els.addTabBtn);
+            });
+        }
+
+        /** Prompt for a new tab name */
+        function promptNewTab() {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'editor-tab tab-name-input active';
+            input.style.width = '120px';
+            input.style.background = 'var(--bg-bento)';
+            input.style.color = 'var(--text-primary)';
+            input.style.border = '1px solid var(--active-color)';
+            input.style.outline = 'none';
+            input.value = `file${fileTabs.length + 1}.js`;
+            
+            els.tabBar.insertBefore(input, els.addTabBtn);
+            input.focus();
+            input.select();
+            
+            const handleFinish = () => {
+                if (input.parentElement) {
+                    const name = input.value.trim();
+                    input.remove();
+                    if (name) createTab(name);
+                }
+            };
+            
+            input.addEventListener('blur', handleFinish);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleFinish();
+                else if (e.key === 'Escape') {
+                    input.value = '';
+                    handleFinish();
+                }
+            });
+        }
+
+        // ============================================================= //
+        //  LINE GUTTER & CURSOR TRACKING                                //
+        // ============================================================= //
+
+        /** Rebuild the line number gutter */
+        function updateLineGutter() {
+            const lines = els.codeEditor.value.split('\n');
+            const count = lines.length;
+            let gutterHtml = '';
+            for (let i = 1; i <= count; i++) {
+                gutterHtml += `<div class="gutter-line" data-line="${i}">${i}</div>`;
+            }
+            els.lineGutter.innerHTML = gutterHtml;
+        }
+
+        /** Sync gutter scroll position with textarea */
+        function syncGutterScroll() {
+            els.lineGutter.scrollTop = els.codeEditor.scrollTop;
+        }
+
+        /** Update cursor position indicator */
+        function updateCursorInfo() {
+            const text = els.codeEditor.value;
+            const pos = els.codeEditor.selectionStart;
+            const lines = text.substring(0, pos).split('\n');
+            const ln = lines.length;
+            const col = lines[lines.length - 1].length + 1;
+            els.lineIndicator.textContent = `Ln ${ln}, Col ${col}`;
+
+            // Update selection info
+            const selStart = els.codeEditor.selectionStart;
+            const selEnd = els.codeEditor.selectionEnd;
+            if (selStart !== selEnd) {
+                const startLine = text.substring(0, selStart).split('\n').length;
+                const endLine = text.substring(0, selEnd).split('\n').length;
+                els.selectionInfo.style.display = 'flex';
+                els.selectionInfo.textContent = `Lines ${startLine}-${endLine} selected`;
+            } else {
+                els.selectionInfo.style.display = 'none';
+            }
+
+            // Update total line count in status bar
+            const totalLines = text.split('\n').length;
+            els.statusLeft.textContent = `${totalLines} lines`;
+        }
+
+        /** Get selected line range from the textarea */
+        function getSelectedLineRange() {
+            const text = els.codeEditor.value;
+            const selStart = els.codeEditor.selectionStart;
+            const selEnd = els.codeEditor.selectionEnd;
+
+            if (selStart === selEnd) return null;
+
+            const startLine = text.substring(0, selStart).split('\n').length;
+            const endLine = text.substring(0, selEnd).split('\n').length;
+            const lines = text.split('\n');
+            const selectedLines = lines.slice(startLine - 1, endLine);
+
+            return { startLine, endLine, lines: selectedLines, text: selectedLines.join('\n') };
+        }
+
+        // ============================================================= //
+        //  RESIZABLE SPLIT PANE                                         //
+        // ============================================================= //
+        function setupResizer() {
+            let isResizing = false;
+
+            const startResize = () => {
+                isResizing = true;
+                els.resizer.classList.add('dragging');
+                const isMobile = window.innerWidth <= 900;
+                document.body.style.cursor = isMobile ? 'row-resize' : 'col-resize';
+                document.body.style.userSelect = 'none';
+            };
+
+            els.resizer.addEventListener('mousedown', (e) => {
+                startResize();
+                e.preventDefault();
+            });
+            
+            els.resizer.addEventListener('touchstart', (e) => {
+                startResize();
+            }, { passive: true });
+
+            const doResize = (clientX, clientY) => {
+                if (!isResizing) return;
+                const containerRect = els.splitContainer.getBoundingClientRect();
+                const isMobile = window.innerWidth <= 900;
+                const resizerSize = 8;
+                
+                let percent;
+                if (isMobile) {
+                    percent = ((clientY - containerRect.top) / containerRect.height) * 100;
+                } else {
+                    percent = ((clientX - containerRect.left) / containerRect.width) * 100;
+                }
+                
+                if (percent >= 20 && percent <= 80) {
+                    els.editorPane.style.flex = `0 0 calc(${percent}% - ${resizerSize / 2}px)`;
+                    els.chatPane.style.flex = `0 0 calc(${100 - percent}% - ${resizerSize / 2}px)`;
+                }
+            };
+
+            document.addEventListener('mousemove', (e) => doResize(e.clientX, e.clientY));
+            document.addEventListener('touchmove', (e) => {
+                if (isResizing) doResize(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+
+            const stopResize = () => {
+                if (isResizing) {
+                    isResizing = false;
+                    els.resizer.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    // Persist the resizer position
+                    const containerRect = els.splitContainer.getBoundingClientRect();
+                    const isMobile = window.innerWidth <= 900;
+                    const editorRect = els.editorPane.getBoundingClientRect();
+                    const pct = isMobile
+                        ? ((editorRect.height / containerRect.height) * 100).toFixed(1)
+                        : ((editorRect.width / containerRect.width) * 100).toFixed(1);
+                    localStorage.setItem(LS_KEYS.resizerPercent, pct);
+                }
+            };
+
+            document.addEventListener('mouseup', stopResize);
+            document.addEventListener('touchend', stopResize);
+
+            // Restore persisted resizer position on startup
+            const savedPercent = parseFloat(localStorage.getItem(LS_KEYS.resizerPercent));
+            if (savedPercent && savedPercent >= 20 && savedPercent <= 80 && window.innerWidth > 900) {
+                const resizerSize = 8;
+                els.editorPane.style.flex = `0 0 calc(${savedPercent}% - ${resizerSize / 2}px)`;
+                els.chatPane.style.flex = `0 0 calc(${100 - savedPercent}% - ${resizerSize / 2}px)`;
+            }
+        }
+
+        // ============================================================= //
+        //  GEMINI API — Inherited GenAI initialization                   //
+        // ============================================================= //
+        function initGenAI() {
+            const selectedKeyType = els.keySel.value;
+            const activeKey = selectedKeyType === 'key1' ? decryptedKeys.key1 : decryptedKeys.key2;
+
+            if (!activeKey || activeKey.includes("YOUR_API")) {
+                console.warn("API Key not configured for:", selectedKeyType);
+                genAI = null;
+            } else {
+                genAI = new GoogleGenerativeAI(activeKey);
+            }
+        }
+
+        // ============================================================= //
+        //  SYSTEM INSTRUCTION FOR CODE EDITING                          //
+        //  Tells the AI how to read raw code and respond with edits      //
+        // ============================================================= //
+        const CODE_EDIT_SYSTEM_INSTRUCTION = `You are a concise AI code editor assistant. When modifying code, keep explanations to an absolute minimum (max 1 sentence) and write only what is necessary.
+
+If code changes are requested, respond with:
+1. A brief 1-sentence description of changes.
+2. A JSON block tagged as \`\`\`json:edits containing an array of edits:
+   - "start_line": (number) Start line (1-indexed)
+   - "end_line": (number) End line (1-indexed, inclusive)
+   - "type": "replace" | "insert" | "delete"
+     - "replace": Replace lines start_line to end_line
+     - "insert": Insert lines after start_line (end_line equals start_line)
+     - "delete": Delete lines from start_line to end_line
+   - "lines_content": (string) New code (use \\n for newlines)
+
+Example:
+Fixing loop bounds.
+\`\`\`json:edits
+[
+  {"start_line": 5, "end_line": 5, "type": "replace", "lines_content": "    for (let i = 0; i < len; i++) {"}
+]
+\`\`\`
+
+Rules:
+- Be extremely brief. Only write what is absolutely necessary to execute the edits or answer the query.
+- Use exact line numbers from the provided code.
+- If answering a general question, reply concisely without the json:edits block.`;
+
+        // ============================================================= //
+        //  CHAT INSTANCE INITIALIZATION                                  //
+        //  Builds tools array, creates model + chat with history         //
+        // ============================================================= //
+        function initChatInstance() {
+            if (!genAI) return;
+            try {
+                // Compose system instruction: user's custom instruction + code edit instruction
+                const userSysInstr = els.sysInstr.value.trim();
+                const fullSysInstr = CODE_EDIT_SYSTEM_INSTRUCTION +
+                    (userSysInstr ? `\n\n## Additional User Instructions:\n${userSysInstr}` : '');
+
+                // Build tools array based on toggle states
+                const tools = [];
+                const isGemma = els.modeToggle.checked;
+
+                if (!isGemma && els.googleSearchBtn.classList.contains('active')) {
+                    tools.push({ googleSearch: {} });
+                }
+                if (els.urlToggleBtn.classList.contains('active')) {
+                    tools.push({ urlContext: {} });
+                }
+                if (els.codeExecBtn.classList.contains('active')) {
+                    tools.push({ codeExecution: {} });
+                }
+
+                // Build generationConfig for thinking mode
+                let generationConfig = undefined;
+                if (sessionConfig.thinkingMode !== 'none') {
+                    generationConfig = {
+                        thinkingConfig: {
+                            includeThoughts: false,
+                            thinkingBudget: sessionConfig.thinkingMode === 'low' ? 512 : 24000
+                        }
+                    };
+                }
+
+                model = genAI.getGenerativeModel({
+                    model: els.modelSel.value,
+                    systemInstruction: (!isGemma && fullSysInstr)
+                        ? { parts: [{ text: fullSysInstr }] }
+                        : undefined,
+                    tools: tools.length > 0 ? tools : undefined,
+                    generationConfig: generationConfig
+                });
+
+                // Rebuild chat history for API
+                const apiHistory = chatHistory
+                    .filter(m => m.text && !m.error)
+                    .map(m => ({
+                        role: m.role === 'user' ? 'user' : 'model',
+                        parts: [{ text: m.text }]
+                    }));
+
+                chat = model.startChat({ history: apiHistory });
+
+            } catch (e) {
+                console.error("Init Chat Error:", e);
+            }
+        }
+
+        // ============================================================= //
+        //  MODE TOGGLE UI (Gemini ↔ Gemma)                              //
+        // ============================================================= //
+        function updateModeUI() {
+            const isGemma = els.modeToggle.checked;
+            els.geminiLabel.classList.toggle('active', !isGemma);
+            els.gemmaLabel.classList.toggle('active', isGemma);
+
+            // Hide system instruction & search in Gemma mode
+            if (els.sysInstrContainer) {
+                els.sysInstrContainer.style.display = isGemma ? 'none' : 'block';
+            }
+            if (els.googleSearchBtn) {
+                els.googleSearchBtn.style.display = isGemma ? 'none' : 'flex';
+            }
+        }
+
+        function populateModels() {
+            const isGemma = els.modeToggle.checked;
+            const models = isGemma ? GEMMA_MODELS : GEMINI_MODELS;
+            els.modelSel.innerHTML = '';
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.value;
+                opt.textContent = m.label;
+                els.modelSel.appendChild(opt);
+            });
+        }
+
+        function updateSessionConfig() {
+            sessionConfig.model = els.modelSel.value;
+            sessionConfig.systemInstruction = els.sysInstr.value;
+            sessionConfig.useUrlContext = els.urlToggleBtn.classList.contains('active');
+            sessionConfig.useCodeExecution = els.codeExecBtn.classList.contains('active');
+            sessionConfig.useGoogleSearch = els.googleSearchBtn.classList.contains('active');
+
+            // Persist all session config fields to localStorage
+            localStorage.setItem(LS_KEYS.model, sessionConfig.model);
+            localStorage.setItem(LS_KEYS.isGemma, els.modeToggle.checked);
+            localStorage.setItem(LS_KEYS.systemInstruction, sessionConfig.systemInstruction);
+            localStorage.setItem(LS_KEYS.useUrlContext, sessionConfig.useUrlContext);
+            localStorage.setItem(LS_KEYS.useCodeExecution, sessionConfig.useCodeExecution);
+            localStorage.setItem(LS_KEYS.useGoogleSearch, sessionConfig.useGoogleSearch);
+            localStorage.setItem(LS_KEYS.thinkingMode, sessionConfig.thinkingMode);
+
+            initChatInstance();
+        }
+
+        // ============================================================= //
+        //  THINKING MODE — Inherited from Codex                          //
+        // ============================================================= //
+        function updateThinkingButtonUI(mode) {
+            els.thinkingLowBtn.classList.toggle('active', mode === 'low');
+            els.thinkingHighBtn.classList.toggle('active', mode === 'high');
+        }
+
+        function handleThinkingToggle(mode) {
+            const newMode = sessionConfig.thinkingMode === mode ? 'none' : mode;
+            sessionConfig.thinkingMode = newMode;
+            localStorage.setItem(LS_KEYS.thinkingMode, newMode);
+            updateThinkingButtonUI(newMode);
+            updateSessionConfig();
+        }
+
+        // ============================================================= //
+        //  CRYPTO EVENTS                                                  //
+        // ============================================================= //
+        function setupCryptoEvents() {
+            els.startupPin.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') els.startupUnlockBtn.click();
+            });
+
+            els.pinInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (localStorage.getItem(LS_KEYS.encryptedKeys)) {
+                        els.unlockKeysBtn.click();
+                    } else {
+                        els.saveKeysBtn.click();
+                    }
+                }
+            });
+
+            // --- Startup PIN modal unlock ---
+            els.startupUnlockBtn.addEventListener('click', async () => {
+                // Check lockout
+                const remaining = checkLockout();
+                if (remaining > 0) {
+                    els.startupCryptoMsg.innerText = `Locked out. Try again in ${remaining}s.`;
+                    return;
+                }
+
+                const pin = els.startupPin.value;
+                const validationErr = validatePassphrase(pin);
+                if (validationErr) {
+                    els.startupCryptoMsg.innerText = validationErr;
+                    return;
+                }
+                const encryptedStr = localStorage.getItem(LS_KEYS.encryptedKeys);
+                if (encryptedStr) {
+                    const obj = JSON.parse(encryptedStr);
+                    const decrypted = await decryptData(pin, obj);
+                    if (decrypted) {
+                        decryptedKeys = decrypted;
+                        // Sanitize: don't persist PIN in memory
+                        els.startupPin.value = '';
+                        els.pinModal.style.display = 'none';
+                        els.apiKey1Input.value = decryptedKeys.key1 || '';
+                        els.apiKey2Input.value = decryptedKeys.key2 || '';
+                        els.lockBtn.style.display = 'flex';
+                        clearLockout();
+                        startIdleTracking();
+                        continueInit();
+                    } else {
+                        const lockMsg = recordFailedAttempt();
+                        els.startupCryptoMsg.innerText = lockMsg || 'Incorrect passphrase.';
+                    }
+                }
+            });
+
+            els.startupCloseBtn.addEventListener('click', () => {
+                els.pinModal.style.display = 'none';
+                continueInit();
+            });
+
+            // --- Save & Encrypt ---
+            els.saveKeysBtn.addEventListener('click', async () => {
+                const pin = els.pinInput.value;
+                const validationErr = validatePassphrase(pin);
+                if (validationErr) {
+                    els.cryptoMsg.style.color = "var(--warning-color)";
+                    els.cryptoMsg.innerText = validationErr;
+                    return;
+                }
+                const keysObj = {
+                    key1: els.apiKey1Input.value.trim(),
+                    key2: els.apiKey2Input.value.trim()
+                };
+                const encrypted = await encryptData(pin, keysObj);
+                localStorage.setItem(LS_KEYS.encryptedKeys, JSON.stringify(encrypted));
+                decryptedKeys = keysObj;
+                // Sanitize: clear PIN from input and memory
+                els.pinInput.value = '';
+                els.cryptoMsg.style.color = "var(--active-color)";
+                els.cryptoMsg.innerText = "Encrypted & Saved!";
+                setTimeout(() => els.cryptoMsg.innerText = "", 3000);
+                els.lockBtn.style.display = 'flex';
+                startIdleTracking();
+                initGenAI();
+                initChatInstance();
+            });
+
+            // --- Unlock from settings ---
+            els.unlockKeysBtn.addEventListener('click', async () => {
+                const remaining = checkLockout();
+                if (remaining > 0) {
+                    els.cryptoMsg.style.color = "var(--danger-color)";
+                    els.cryptoMsg.innerText = `Locked out. Try again in ${remaining}s.`;
+                    return;
+                }
+
+                const pin = els.pinInput.value;
+                const validationErr = validatePassphrase(pin);
+                if (validationErr) {
+                    els.cryptoMsg.style.color = "var(--warning-color)";
+                    els.cryptoMsg.innerText = validationErr;
+                    return;
+                }
+                const encryptedStr = localStorage.getItem(LS_KEYS.encryptedKeys);
+                if (!encryptedStr) {
+                    els.cryptoMsg.style.color = "var(--warning-color)";
+                    els.cryptoMsg.innerText = "No saved keys found.";
+                    return;
+                }
+                const obj = JSON.parse(encryptedStr);
+                const decrypted = await decryptData(pin, obj);
+                if (decrypted) {
+                    decryptedKeys = decrypted;
+                    // Sanitize: clear PIN from input
+                    els.pinInput.value = '';
+                    els.apiKey1Input.value = decryptedKeys.key1 || '';
+                    els.apiKey2Input.value = decryptedKeys.key2 || '';
+                    els.cryptoMsg.style.color = "var(--active-color)";
+                    els.cryptoMsg.innerText = "Unlocked!";
+                    setTimeout(() => els.cryptoMsg.innerText = "", 3000);
+                    els.lockBtn.style.display = 'flex';
+                    clearLockout();
+                    startIdleTracking();
+                    initGenAI();
+                    initChatInstance();
+                } else {
+                    const lockMsg = recordFailedAttempt();
+                    els.cryptoMsg.style.color = "var(--danger-color)";
+                    els.cryptoMsg.innerText = lockMsg || 'Incorrect passphrase.';
+                }
+            });
+
+            // --- Forget Keys ---
+            els.forgetKeysBtn.addEventListener('click', () => {
+                if (!confirm('This will permanently delete your saved encrypted keys. Continue?')) return;
+                localStorage.removeItem(LS_KEYS.encryptedKeys);
+                clearLockout();
+                decryptedKeys = { key1: "", key2: "" };
+                activePin = null;
+                genAI = null;
+                els.apiKey1Input.value = '';
+                els.apiKey2Input.value = '';
+                els.lockBtn.style.display = 'none';
+                els.cryptoMsg.style.color = "var(--warning-color)";
+                els.cryptoMsg.innerText = "Keys forgotten.";
+                setTimeout(() => els.cryptoMsg.innerText = "", 3000);
+                showToast('Saved keys deleted', 'warning');
+            });
+
+            // --- Manual Lock Button ---
+            els.lockBtn.addEventListener('click', lockApp);
+        }
+
+        // ============================================================= //
+        //  THE SMART REPLACEMENT LOGIC — Bottom-to-Top Edits            //
+        //  This is the CORE new logic for the code editor.              //
+        //                                                                //
+        //  It parses the AI's JSON edit payload and applies edits        //
+        //  sorted in DESCENDING order by start_line to prevent           //
+        //  line number offset corruption.                                //
+        // ============================================================= //
+
+        /**
+         * Parse the AI's response text to extract JSON edit blocks.
+         * Looks for ```json:edits ... ``` markers in the response.
+         * @param {string} responseText - The full AI response text
+         * @returns {Array|null} Array of edit objects, or null if none found
+         */
+        function parseEditsFromResponse(responseText) {
+            // Match ```json:edits ... ``` blocks
+            const editBlockRegex = /```json:edits\s*\n([\s\S]*?)```/g;
+            let match;
+            let allEdits = [];
+
+            while ((match = editBlockRegex.exec(responseText)) !== null) {
+                try {
+                    const parsed = JSON.parse(match[1].trim());
+                    if (Array.isArray(parsed)) {
+                        allEdits = allEdits.concat(parsed);
+                    }
+                } catch (e) {
+                    console.warn("Failed to parse edit block:", e, match[1]);
+                }
+            }
+
+            // Validate each edit — reject structurally invalid ones early
+            const validEdits = allEdits.filter(edit => {
+                if (typeof edit.start_line !== 'number' || typeof edit.end_line !== 'number') return false;
+                if (!['replace', 'insert', 'delete'].includes(edit.type)) return false;
+                if (edit.start_line <= 0) return false;
+                if (edit.end_line < edit.start_line) {
+                    console.warn(`Edit rejected in parse: end_line (${edit.end_line}) < start_line (${edit.start_line})`);
+                    return false;
+                }
+                return true;
+            });
+
+            return validEdits.length > 0 ? validEdits : null;
+        }
+
+        /**
+         * APPLY EDITS — The Bottom-to-Top Algorithm
+         *
+         * CRITICALLY sorts edits by start_line in DESCENDING order before applying.
+         * This ensures that modifications to lines lower in the file do NOT
+         * invalidate line numbers for edits higher in the file.
+         *
+         * @param {string} code - The original code content
+         * @param {Array} edits - Array of edit objects from the AI
+         * @returns {string} The modified code after all edits applied
+         */
+        function applyEditsBottomToTop(code, edits) {
+            const lines = code.split('\n');
+            const lineCount = lines.length;
+
+            // --- Validation pass: clamp bounds and reject invalid edits ---
+            const validEdits = [];
+            for (const edit of edits) {
+                // Clamp to [1, lineCount]
+                const sl = Math.max(1, Math.min(edit.start_line, lineCount));
+                const el = Math.max(1, Math.min(edit.end_line, lineCount));
+                if (el < sl) {
+                    showToast(`Edit rejected: end_line (${edit.end_line}) < start_line (${edit.start_line})`, 'error', 4000);
+                    continue;
+                }
+                validEdits.push({ ...edit, start_line: sl, end_line: el });
+            }
+
+            // --- Overlap detection via interval sweep ---
+            const byStart = [...validEdits].sort((a, b) => a.start_line - b.start_line);
+            for (let i = 1; i < byStart.length; i++) {
+                if (byStart[i].start_line <= byStart[i - 1].end_line) {
+                    showToast('Overlapping edits detected — aborting to prevent corruption.', 'error', 5000);
+                    return code; // Return code unchanged
+                }
+            }
+
+            // *** THE KEY INSIGHT: Sort by start_line DESCENDING ***
+            // This way we modify lines from the bottom of the file upward,
+            // so inserting/deleting lines below doesn't shift indices above.
+            const sortedEdits = [...validEdits].sort((a, b) => b.start_line - a.start_line);
+
+            for (const edit of sortedEdits) {
+                const startIdx = edit.start_line - 1; // Convert to 0-indexed
+                const endIdx = edit.end_line - 1;
+
+                switch (edit.type) {
+                    case 'replace': {
+                        // Replace lines [startIdx..endIdx] with new content
+                        const newLines = edit.lines_content.split('\n');
+                        lines.splice(startIdx, endIdx - startIdx + 1, ...newLines);
+                        break;
+                    }
+                    case 'insert': {
+                        // Insert new lines AFTER startIdx
+                        const newLines = edit.lines_content.split('\n');
+                        lines.splice(startIdx + 1, 0, ...newLines);
+                        break;
+                    }
+                    case 'delete': {
+                        // Delete lines [startIdx..endIdx]
+                        lines.splice(startIdx, endIdx - startIdx + 1);
+                        break;
+                    }
+                }
+            }
+
+            return lines.join('\n');
+        }
+
+        /**
+         * Generate a diff preview for the user before they approve edits.
+         * Renders edits top-to-bottom (ascending by start_line) for natural reading order,
+         * with 1 context line above and below each edit hunk.
+         * @param {Array} edits - The edit operations
+         * @param {string} code - The original code
+         * @returns {string} HTML string for the diff preview
+         */
+        function generateDiffPreview(edits, code) {
+            const lines = code.split('\n');
+            // Sort ascending for top-to-bottom reading order
+            const sortedEdits = [...edits].sort((a, b) => a.start_line - b.start_line);
+            let html = '<div class="diff-preview">';
+            html += `<div class="diff-header">📝 ${edits.length} edit(s) proposed</div>`;
+
+            for (const edit of sortedEdits) {
+                html += `<div style="margin: 6px 0; padding-top: 4px; border-top: 1px solid var(--border-color);">`;
+                html += `<div class="diff-header" style="font-size: 0.7rem;">`;
+
+                if (edit.type === 'replace') {
+                    html += `Replace L${edit.start_line}–L${edit.end_line}`;
+                } else if (edit.type === 'insert') {
+                    html += `Insert after L${edit.start_line}`;
+                } else if (edit.type === 'delete') {
+                    html += `Delete L${edit.start_line}–L${edit.end_line}`;
+                }
+                html += `</div>`;
+
+                // Context line above the edit
+                const ctxAbove = edit.start_line - 2; // 0-indexed line above start
+                if (ctxAbove >= 0 && ctxAbove < lines.length) {
+                    html += `<div class="diff-line-ctx">&nbsp; ${escapeHTML(lines[ctxAbove])}</div>`;
+                }
+
+                // Show old lines (for replace/delete)
+                if (edit.type === 'replace' || edit.type === 'delete') {
+                    for (let i = edit.start_line - 1; i <= Math.min(edit.end_line - 1, lines.length - 1); i++) {
+                        html += `<div class="diff-line-del">- ${escapeHTML(lines[i])}</div>`;
+                    }
+                }
+
+                // Show new lines (for replace/insert)
+                if ((edit.type === 'replace' || edit.type === 'insert') && edit.lines_content) {
+                    const newLines = edit.lines_content.split('\n');
+                    for (const nl of newLines) {
+                        html += `<div class="diff-line-add">+ ${escapeHTML(nl)}</div>`;
+                    }
+                }
+
+                // Context line below the edit
+                const ctxBelow = edit.end_line; // 0-indexed line after end
+                if (ctxBelow >= 0 && ctxBelow < lines.length) {
+                    html += `<div class="diff-line-ctx">&nbsp; ${escapeHTML(lines[ctxBelow])}</div>`;
+                }
+
+                html += `</div>`;
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        // ============================================================= //
+        //  CHAT MESSAGE RENDERING                                        //
+        // ============================================================= //
+
+        /** Append a user message bubble to the chat */
+        function appendUserMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'user-content';
+            const textP = document.createElement('p');
+            textP.style.margin = '0';
+            textP.style.whiteSpace = 'pre-wrap';
+            textP.textContent = text;
+            contentDiv.appendChild(textP);
+            messageDiv.appendChild(contentDiv);
+            els.chatMsgs.appendChild(messageDiv);
+            scrollBottom();
+        }
+
+        /** Append a bot message bubble. Returns the wrapper div for streaming updates. */
+        function appendBotMessage(html) {
+            const div = document.createElement('div');
+            div.className = 'message bot-message';
+            div.innerHTML = `<div class="bot-content">${html}</div>`;
+            els.chatMsgs.appendChild(div);
+            scrollBottom();
+            return div;
+        }
+
+        /** Render a fully-formed bot message (with highlight.js + buttons) */
+        function renderBotResponseHTML(html) {
+            const div = appendBotMessage(html);
+            div.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+            addCodeBlockButtons(div);
+        }
+
+        /** Add Copy / Preview buttons to code blocks — Inherited from Codex */
+        function addCodeBlockButtons(container) {
+            container.querySelectorAll('pre').forEach(block => {
+                const codeEl = block.querySelector('code');
+                if (!codeEl) return;
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-code-btn';
+                copyBtn.textContent = 'Copy';
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(codeEl.innerText).then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                    }).catch(() => { copyBtn.textContent = 'Error'; });
+                });
+                block.appendChild(copyBtn);
+
+                if (codeEl.classList.contains('language-html')) {
+                    const previewBtn = document.createElement('button');
+                    previewBtn.className = 'preview-html-btn';
+                    previewBtn.textContent = 'Preview';
+                    previewBtn.addEventListener('click', () => {
+                        els.previewIframe.srcdoc = codeEl.innerText;
+                        els.htmlPreviewModal.style.display = "block";
+                    });
+                    block.appendChild(previewBtn);
+                }
+            });
+        }
+
+        /** Render retry button on last user message */
+        function renderRetryButton() {
+            document.querySelectorAll('.retry-msg-btn').forEach(btn => btn.remove());
+            const userMessages = document.querySelectorAll('.user-message');
+            if (userMessages.length === 0) return;
+            const lastUserMsg = userMessages[userMessages.length - 1];
+            const btn = document.createElement('button');
+            btn.className = 'retry-msg-btn';
+            btn.innerHTML = '↻ Retry';
+            btn.title = "Resend this message";
+            btn.onclick = () => retryLastMessage();
+            const content = lastUserMsg.querySelector('.user-content');
+            if (content) content.appendChild(btn);
+        }
+
+        /** Retry the last user message */
+        function retryLastMessage() {
+            if (chatHistory.length === 0) return;
+
+            const lastMsg = chatHistory[chatHistory.length - 1];
+            let userMsgToRetry;
+
+            if (lastMsg.role === 'model') {
+                chatHistory.pop();
+                userMsgToRetry = chatHistory.pop();
+                if (els.chatMsgs.lastElementChild) els.chatMsgs.lastElementChild.remove();
+                if (els.chatMsgs.lastElementChild) els.chatMsgs.lastElementChild.remove();
+            } else {
+                userMsgToRetry = chatHistory.pop();
+                if (els.chatMsgs.lastElementChild) els.chatMsgs.lastElementChild.remove();
+            }
+
+            if (!userMsgToRetry) return;
+            els.userInput.value = userMsgToRetry.text;
+            checkInputState();
+            sendMessage();
+        }
+
+        /** Extract citations/grounding sources — Inherited from Codex */
+        function getCitations(response) {
+            const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+            const webChunks = chunks?.filter(c => c.web);
+            if (!webChunks?.length) return '';
+            return `<div class="grounding-sources">Sources: ${webChunks.map((c, i) => {
+                if (!c.web?.uri) return '';
+                let uri = c.web.uri;
+                try {
+                    const urlObj = new URL(uri);
+                    if (['javascript:', 'data:', 'vbscript:'].includes(urlObj.protocol)) uri = '#';
+                } catch (e) { uri = '#'; }
+                return `<a href="${escapeHTML(uri)}" target="_blank" class="source-link">[${i + 1}] ${escapeHTML(c.web.title || 'Source')}</a>`;
+            }).join('')}</div>`;
+        }
+
+        function formatError(err) {
+            let msg = err.message;
+            let title = "Error";
+            if (msg.includes("429")) { title = "Quota Exceeded"; msg = "Too many requests."; }
+            else if (msg.includes("401") || msg.includes("API key")) { title = "Auth Error"; msg = "Invalid API Key."; }
+            else if (msg.includes("SAFETY")) { title = "Safety Block"; msg = "Blocked by safety settings."; }
+            return `<div class="error-message"><strong>${title}</strong><br>${escapeHTML(msg)}</div>`;
+        }
+
+        function scrollBottom() { els.chatMsgs.scrollTop = els.chatMsgs.scrollHeight; }
+
+        // ============================================================= //
+        //  SEND / LOADING STATE                                          //
+        // ============================================================= //
+        function setLoading(state) {
+            const sendSvg = els.sendBtn.querySelector('.send-icon');
+            const stopSvg = els.sendBtn.querySelector('.stop-icon');
+            if (state) {
+                els.sendBtn.disabled = false;
+                els.sendBtn.classList.add('active', 'abort');
+                sendSvg.style.display = 'none';
+                stopSvg.style.display = 'block';
+                els.userInput.disabled = true;
+            } else {
+                els.sendBtn.classList.remove('abort');
+                sendSvg.style.display = 'block';
+                stopSvg.style.display = 'none';
+                els.userInput.disabled = false;
+                els.userInput.focus();
+                checkInputState();
+            }
+        }
+
+        function checkInputState() {
+            const isValid = els.userInput.value.trim().length > 0;
+            if (!abortController) {
+                els.sendBtn.disabled = !isValid;
+                els.sendBtn.classList.toggle('active', isValid);
+            }
+        }
+
+        // ============================================================= //
+        //  CODE CONTEXT BUILDERS — Prepare code for the AI               //
+        // ============================================================= //
+
+        /**
+         * Format code with line numbers for sending to the AI.
+         * Raw code wrapped in markdown blocks (not JSON) to save tokens.
+         */
+        function formatCodeForAI(code, startLine = 1, fileName = '') {
+            const lines = code.split('\n');
+            const numbered = lines.map((line, i) => `${startLine + i}: ${line}`).join('\n');
+            const lang = fileName ? fileName.split('.').pop() : '';
+            return `\`\`\`${lang}\n${numbered}\n\`\`\``;
+        }
+
+        /** Build the full prompt by combining user text + code context */
+        function buildPrompt(userText, codeContext) {
+            let prompt = '';
+
+            if (codeContext) {
+                const tab = fileTabs.find(t => t.id === activeTabId);
+                const fileName = tab ? tab.name : 'untitled';
+
+                if (codeContext.isFullFile) {
+                    prompt += `**File: ${fileName}** (Full file, ${codeContext.code.split('\n').length} lines)\n`;
+                    prompt += formatCodeForAI(codeContext.code, 1, fileName);
+                } else {
+                    prompt += `**File: ${fileName}** (Lines ${codeContext.startLine}–${codeContext.endLine} of ${els.codeEditor.value.split('\n').length})\n`;
+                    prompt += formatCodeForAI(codeContext.text, codeContext.startLine, fileName);
+                }
+
+                prompt += '\n\n';
+            }
+
+            prompt += userText;
+            return prompt;
+        }
+
+        // ============================================================= //
+        //  SEND MESSAGE — Streaming with edit detection                  //
+        // ============================================================= //
+
+        // Stores code context to attach to the next message
+        let pendingCodeContext = null;
+
+        async function handleSendClick() {
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+                setLoading(false);
+                appendBotMessage('<span style="color:var(--text-secondary)">Generation aborted.</span>');
+                renderRetryButton();
+            } else {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const userText = els.userInput.value.trim();
+            if (!userText) return;
+
+            // Check API key
+            const selectedKeyType = els.keySel.value;
+            const activeKey = selectedKeyType === 'key1' ? decryptedKeys.key1 : decryptedKeys.key2;
+            if (!activeKey || activeKey.includes("YOUR_API") || !genAI) {
+                appendUserMessage(userText);
+                appendBotMessage(`<div class="error-message"><strong>Configuration Error</strong><br>Please configure and unlock your API Keys in Settings.</div>`);
+                els.userInput.value = '';
+                return;
+            }
+
+            // Build the prompt with optional code context
+            const fullPrompt = buildPrompt(userText, pendingCodeContext);
+
+            // Show the user message in chat
+            const displayText = pendingCodeContext
+                ? `${pendingCodeContext.isFullFile ? '📄 [Full File]' : `📤 [Lines ${pendingCodeContext.startLine}–${pendingCodeContext.endLine}]`}\n${userText}`
+                : userText;
+            appendUserMessage(displayText);
+            renderRetryButton();
+
+            chatHistory.push({ role: 'user', text: fullPrompt });
+
+            // Store the code snapshot for edit application
+            const codeSnapshotForEdits = els.codeEditor.value;
+
+            els.userInput.value = '';
+            els.userInput.style.height = 'auto';
+            pendingCodeContext = null;
+            setLoading(true);
+
+            abortController = new AbortController();
+            const signal = abortController.signal;
+
+            const botMsgDiv = appendBotMessage('<div class="loading-indicator">Thinking...</div>');
+            const botContentDiv = botMsgDiv.querySelector('.bot-content');
+
+            let fullText = "";
+
+            try {
+                if (!chat) initChatInstance();
+
+                const result = await chat.sendMessageStream([{ text: fullPrompt }], { signal });
+
+                for await (const chunk of result.stream) {
+                    const isAtBottom = (els.chatMsgs.scrollHeight - els.chatMsgs.scrollTop - els.chatMsgs.clientHeight) < 100;
+
+                    const chunkText = chunk.text();
+                    fullText += chunkText;
+
+                    // Render markdown — but strip the json:edits blocks from display
+                    const displayText = fullText.replace(/```json:edits\s*\n[\s\S]*?```/g,
+                        '<div style="color: var(--active-color); font-size: 0.75rem; padding: 4px 0;">✏️ <em>Code edits detected (see below)</em></div>');
+                    botContentDiv.innerHTML = DOMPurify.sanitize(marked.parse(displayText), domPurifyConfig);
+
+                    if (isAtBottom) scrollBottom();
+                }
+
+                // Final response processing
+                const response = await result.response;
+                const citations = getCitations(response);
+
+                // Parse edit blocks from the response
+                const edits = parseEditsFromResponse(fullText);
+
+                // Build final display HTML (strip json:edits blocks)
+                const cleanText = fullText.replace(/```json:edits\s*\n[\s\S]*?```/g, '');
+                let finalHtml = DOMPurify.sanitize(marked.parse(cleanText), domPurifyConfig);
+                if (citations) finalHtml += citations;
+
+                // If edits were detected, show diff preview + Approve/Reject buttons
+                if (edits && edits.length > 0) {
+                    const diffHtml = generateDiffPreview(edits, codeSnapshotForEdits);
+                    finalHtml += diffHtml;
+
+                    // Create a unique ID for this edit set
+                    const editSetId = 'edits_' + crypto.randomUUID();
+
+                    // Check if editor content has diverged since the snapshot was taken
+                    const codeChanged = codeSnapshotForEdits !== els.codeEditor.value;
+
+                    finalHtml += `<div class="edit-actions" id="${editSetId}">`;
+                    if (codeChanged) {
+                        finalHtml += `<div style="color:var(--warning-color); font-size: 0.75rem; margin-bottom: 6px;">⚠️ File was modified since this snapshot. Approve is disabled.</div>`;
+                        finalHtml += `<button class="approve-edits-btn applied" data-edit-id="${editSetId}" disabled>✅ Approve Edits (${edits.length})</button>`;
+                    } else {
+                        finalHtml += `<button class="approve-edits-btn" data-edit-id="${editSetId}">✅ Approve Edits (${edits.length})</button>`;
+                    }
+                    finalHtml += `<button class="reject-edits-btn" data-edit-id="${editSetId}">✖ Dismiss</button>`;
+                    finalHtml += `</div>`;
+
+                    // Store edits for later application
+                    pendingEditsMap.set(editSetId, {
+                        edits: edits,
+                        codeSnapshot: codeSnapshotForEdits
+                    });
+                }
+
+                botContentDiv.innerHTML = finalHtml;
+                botContentDiv.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+                addCodeBlockButtons(botContentDiv);
+
+                // Attach approve/reject event listeners
+                if (edits && edits.length > 0) {
+                    botContentDiv.querySelectorAll('.approve-edits-btn').forEach(btn => {
+                        btn.addEventListener('click', handleApproveEdits);
+                    });
+                    botContentDiv.querySelectorAll('.reject-edits-btn').forEach(btn => {
+                        btn.addEventListener('click', handleRejectEdits);
+                    });
+                }
+
+                chatHistory.push({ role: 'model', text: fullText, html: finalHtml, edits: edits });
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    const abortedHtml = DOMPurify.sanitize(marked.parse(fullText), domPurifyConfig) +
+                        '<br><span style="color:var(--text-secondary); font-style:italic;">(Generation stopped)</span>';
+                    botContentDiv.innerHTML = abortedHtml;
+                    if (fullText) {
+                        chatHistory.push({ role: 'model', text: fullText, html: abortedHtml });
+                    }
+                } else {
+                    if (!fullText) botMsgDiv.remove();
+                    appendBotMessage(formatError(err));
+                }
+            } finally {
+                abortController = null;
+                setLoading(false);
+                renderRetryButton();
+                if ((els.chatMsgs.scrollHeight - els.chatMsgs.scrollTop - els.chatMsgs.clientHeight) < 100) {
+                    scrollBottom();
+                }
+            }
+        }
+
+        // ============================================================= //
+        //  APPROVE / REJECT EDITS HANDLERS                               //
+        // ============================================================= //
+
+        /**
+         * Handle the "Approve Edits" button click.
+         * Applies edits using the bottom-to-top algorithm.
+         */
+        function handleApproveEdits(e) {
+            const editId = e.target.dataset.editId;
+            const editData = pendingEditsMap.get(editId);
+
+            if (!editData) {
+                showToast('Edit data not found', 'error');
+                return;
+            }
+
+            // Block if the file has diverged since the snapshot was taken
+            if (editData.codeSnapshot !== els.codeEditor.value) {
+                showToast('File has changed since this snapshot — edits cannot be applied.', 'error', 4000);
+                e.target.textContent = '⚠️ Stale';
+                e.target.classList.add('applied');
+                e.target.disabled = true;
+                return;
+            }
+
+            // Preserve cursor and scroll position before applying edits
+            const savedCursorPos = els.codeEditor.selectionStart;
+            const savedScrollTop = els.codeEditor.scrollTop;
+            const oldLineCount = editData.codeSnapshot.split('\n').length;
+
+            // Push the current content onto the undo stack
+            pushUndo(activeTabId, editData.codeSnapshot, savedCursorPos);
+
+            // Apply the edits using the bottom-to-top algorithm
+            const newCode = applyEditsBottomToTop(editData.codeSnapshot, editData.edits);
+
+            // Update the editor
+            els.codeEditor.value = newCode;
+
+            // Restore cursor — adjust for line delta
+            const newLineCount = newCode.split('\n').length;
+            const lineDelta = newLineCount - oldLineCount;
+            const adjustedCursorPos = Math.min(
+                Math.max(0, savedCursorPos + lineDelta),
+                newCode.length
+            );
+            els.codeEditor.setSelectionRange(adjustedCursorPos, adjustedCursorPos);
+            els.codeEditor.scrollTop = savedScrollTop;
+
+            updateLineGutter();
+            updateCursorInfo();
+
+            // Update the active tab's content
+            const tab = fileTabs.find(t => t.id === activeTabId);
+            if (tab) {
+                tab.content = newCode;
+                tab.dirty = true;
+            }
+            scheduleAutoSave();
+
+            // Mark button as applied
+            e.target.textContent = '✅ Applied!';
+            e.target.classList.add('applied');
+            e.target.disabled = true;
+
+            // Hide the reject button
+            const actionsDiv = document.getElementById(editId);
+            if (actionsDiv) {
+                const rejectBtn = actionsDiv.querySelector('.reject-edits-btn');
+                if (rejectBtn) rejectBtn.style.display = 'none';
+            }
+
+            // Clean up
+            pendingEditsMap.delete(editId);
+
+            showToast(`${editData.edits.length} edit(s) applied · Ctrl+Z to undo`);
+            els.statusLeft.textContent = `${newCode.split('\n').length} lines · Edits applied`;
+        }
+
+        /** Handle the "Reject/Dismiss" button click */
+        function handleRejectEdits(e) {
+            const editId = e.target.dataset.editId;
+            const actionsDiv = document.getElementById(editId);
+            if (actionsDiv) {
+                actionsDiv.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic;">Edits dismissed</span>';
+            }
+            pendingEditsMap.delete(editId);
+        }
+
+        // ============================================================= //
+        //  SEND CODE CONTEXT BUTTONS                                     //
+        // ============================================================= //
+
+        /** Send selected lines to the AI chat */
+        function sendSelectedCode() {
+            const selection = getSelectedLineRange();
+            if (!selection) {
+                showToast('Select some code first', 'error');
+                return;
+            }
+            pendingCodeContext = {
+                isFullFile: false,
+                startLine: selection.startLine,
+                endLine: selection.endLine,
+                text: selection.text,
+                code: els.codeEditor.value
+            };
+            els.userInput.focus();
+            els.userInput.placeholder = `[Lines ${selection.startLine}–${selection.endLine} attached] Describe your changes...`;
+            showToast(`Lines ${selection.startLine}–${selection.endLine} attached`);
+        }
+
+        /** Send the full file to the AI chat */
+        function sendFullFile() {
+            const code = els.codeEditor.value;
+            if (!code.trim()) {
+                showToast('Editor is empty', 'error');
+                return;
+            }
+            pendingCodeContext = {
+                isFullFile: true,
+                code: code
+            };
+            els.userInput.focus();
+            els.userInput.placeholder = `[Full file attached] Describe your changes...`;
+            showToast('Full file attached');
+        }
+
+        // ============================================================= //
+        //  CLEAR CHAT                                                    //
+        // ============================================================= //
+        function clearChat() {
+            if (chatHistory.length === 0) return;
+            if (!confirm("Clear all chat messages?")) return;
+            chatHistory = [];
+            els.chatMsgs.innerHTML = '';
+            pendingEditsMap.clear();
+            initChatInstance();
+            showToast('Chat cleared');
+        }
+
+        // ============================================================= //
+        //  MODAL EVENTS — Inherited from Codex                           //
+        // ============================================================= //
+        function setupModalEvents() {
+            els.modalCloseBtn.onclick = () => {
+                els.htmlPreviewModal.style.display = "none";
+                els.previewIframe.srcdoc = '';
+            };
+            window.addEventListener('click', (e) => {
+                if (e.target === els.htmlPreviewModal) {
+                    els.htmlPreviewModal.style.display = "none";
+                    els.previewIframe.srcdoc = '';
+                }
+            });
+        }
+
+        // ============================================================= //
+        //  INITIALIZATION                                                //
+        // ============================================================= //
+        function init() {
+            setupCryptoEvents();
+            setupResizer();
+            setupModalEvents();
+
+            // Check for encrypted keys — show PIN modal if found
+            const encryptedStr = localStorage.getItem(LS_KEYS.encryptedKeys);
+            if (encryptedStr) {
+                els.pinModal.style.display = 'flex';
+                els.startupPin.focus();
+            } else {
+                continueInit();
+            }
+        }
+
+        async function continueInit() {
+            els.modeToggle.checked = localStorage.getItem(LS_KEYS.isGemma) === 'true';
+            initGenAI();
+            populateModels();
+            updateModeUI();
+
+            // Restore last model
+            const lastModel = localStorage.getItem(LS_KEYS.model);
+            if (lastModel) {
+                els.modelSel.value = lastModel;
+            }
+
+            // Restore persisted session config
+            if (sessionConfig.systemInstruction) {
+                els.sysInstr.value = sessionConfig.systemInstruction;
+            }
+            if (sessionConfig.useGoogleSearch) els.googleSearchBtn.classList.add('active');
+            if (sessionConfig.useCodeExecution) els.codeExecBtn.classList.add('active');
+            if (sessionConfig.useUrlContext) els.urlToggleBtn.classList.add('active');
+
+            initChatInstance();
+
+            // Restore tabs from IndexedDB, or create a default tab
+            const restored = await restoreTabs();
+            if (!restored) {
+                createTab('main.js', '// Welcome to AuraCode Editor\n// Start coding here or paste your code\n\nfunction hello() {\n    console.log("Hello, World!");\n}\n\nhello();\n');
+            }
+
+            updateThinkingButtonUI(sessionConfig.thinkingMode);
+        }
+
+        // ============================================================= //
+        //  EVENT LISTENERS                                               //
+        // ============================================================= //
+
+        // --- Editor Events ---
+        els.codeEditor.addEventListener('input', () => {
+            updateLineGutter();
+            updateCursorInfo();
+            // Save to active tab and mark dirty
+            const tab = fileTabs.find(t => t.id === activeTabId);
+            if (tab) {
+                tab.content = els.codeEditor.value;
+                tab.dirty = true;
+            }
+            scheduleAutoSave();
+        });
+
+        els.codeEditor.addEventListener('scroll', syncGutterScroll);
+
+        els.codeEditor.addEventListener('click', updateCursorInfo);
+        els.codeEditor.addEventListener('keyup', updateCursorInfo);
+        els.codeEditor.addEventListener('select', updateCursorInfo);
+
+        // Tab key handling for indentation
+        els.codeEditor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = els.codeEditor.selectionStart;
+                const end = els.codeEditor.selectionEnd;
+
+                if (e.shiftKey) {
+                    // Shift+Tab: Unindent selected lines
+                    const text = els.codeEditor.value;
+                    const beforeCursor = text.substring(0, start);
+                    const lineStart = beforeCursor.lastIndexOf('\n') + 1;
+                    const lineText = text.substring(lineStart, end);
+                    const lines = lineText.split('\n');
+                    
+                    let firstLineRemoved = 0;
+                    if (lines.length > 0) {
+                        if (lines[0].startsWith('    ')) firstLineRemoved = 4;
+                        else if (lines[0].startsWith('\t')) firstLineRemoved = 1;
+                    }
+                    
+                    const unindented = lines.map(l => l.startsWith('    ') ? l.slice(4) : (l.startsWith('\t') ? l.slice(1) : l));
+                    const newText = text.substring(0, lineStart) + unindented.join('\n') + text.substring(end);
+                    els.codeEditor.value = newText;
+                    const diff = lineText.length - unindented.join('\n').length;
+                    els.codeEditor.setSelectionRange(Math.max(lineStart, start - firstLineRemoved), end - diff);
+                } else {
+                    // Tab: Insert 4 spaces
+                    els.codeEditor.value = els.codeEditor.value.substring(0, start) +
+                        '    ' + els.codeEditor.value.substring(end);
+                    els.codeEditor.selectionStart = els.codeEditor.selectionEnd = start + 4;
+                }
+                updateLineGutter();
+                updateCursorInfo();
+            }
+        });
+
+        els.addTabBtn.addEventListener('click', promptNewTab);
+        els.sendSelBtn.addEventListener('click', sendSelectedCode);
+        els.sendFullBtn.addEventListener('click', sendFullFile);
+
+        function saveCurrentFile() {
+            const tab = fileTabs.find(t => t.id === activeTabId);
+            if (!tab) return;
+            const blob = new Blob([tab.content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = tab.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            // Defer revocation to ensure the download completes before the blob URL is freed
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            tab.dirty = false;
+            renderTabs();
+            scheduleAutoSave();
+            showToast(`Saved ${tab.name}`);
+        }
+        
+        els.openFileBtn.addEventListener('click', () => els.hiddenFileInput.click());
+        els.saveFileBtn.addEventListener('click', saveCurrentFile);
+        els.hiddenFileInput.addEventListener('change', (e) => {
+            Array.from(e.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    createTab(file.name, ev.target.result);
+                    showToast(`Opened ${file.name}`);
+                };
+                reader.readAsText(file);
+            });
+            els.hiddenFileInput.value = '';
+        });
+
+        // Drag counter to fix premature dragleave when hovering over child elements
+        let _dragCounter = 0;
+        els.editorWorkspace.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            _dragCounter++;
+            els.editorWorkspace.style.boxShadow = 'inset 0 0 0 2px var(--active-color)';
+        });
+        els.editorWorkspace.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+        els.editorWorkspace.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            _dragCounter--;
+            if (_dragCounter <= 0) {
+                _dragCounter = 0;
+                els.editorWorkspace.style.boxShadow = 'none';
+            }
+        });
+        els.editorWorkspace.addEventListener('drop', (e) => {
+            e.preventDefault();
+            _dragCounter = 0;
+            els.editorWorkspace.style.boxShadow = 'none';
+            if (e.dataTransfer.files.length > 0) {
+                Array.from(e.dataTransfer.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        createTab(file.name, ev.target.result);
+                        showToast(`Opened ${file.name}`);
+                    };
+                    reader.readAsText(file);
+                });
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveCurrentFile();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+                e.preventDefault();
+                els.hiddenFileInput.click();
+            }
+            // Ctrl+Z / Cmd+Z: Undo last applied edit set (only when NOT focused on textarea — textarea has native undo)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+                // Only intercept if the editor textarea does not have focus (native undo handles that),
+                // OR if we detect the undo stack has entries and the user is in the editor
+                if (document.activeElement === els.codeEditor && undoStacks.has(activeTabId) && undoStacks.get(activeTabId).length > 0) {
+                    e.preventDefault();
+                    const snapshot = popUndo(activeTabId);
+                    if (snapshot) {
+                        els.codeEditor.value = snapshot.content;
+                        const clampedPos = Math.min(snapshot.cursorPos, snapshot.content.length);
+                        els.codeEditor.setSelectionRange(clampedPos, clampedPos);
+                        updateLineGutter();
+                        updateCursorInfo();
+                        const tab = fileTabs.find(t => t.id === activeTabId);
+                        if (tab) {
+                            tab.content = snapshot.content;
+                            tab.dirty = true;
+                        }
+                        scheduleAutoSave();
+                        showToast('Edit set undone', 'warning');
+                    }
+                }
+            }
+        });
+
+        // --- Chat Events ---
+        els.userInput.addEventListener('input', () => {
+            els.userInput.style.height = 'auto';
+            els.userInput.style.height = els.userInput.scrollHeight + 'px';
+            checkInputState();
+        });
+
+        els.userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || !e.shiftKey)) {
+                e.preventDefault();
+                if (!els.sendBtn.disabled && !abortController) handleSendClick();
+            }
+        });
+
+        // Reset placeholder when input is cleared
+        els.userInput.addEventListener('blur', () => {
+            if (!els.userInput.value.trim() && !pendingCodeContext) {
+                els.userInput.placeholder = 'Describe the changes you want...';
+            }
+        });
+
+        els.sendBtn.addEventListener('click', handleSendClick);
+        els.clearChatBtn.addEventListener('click', clearChat);
+
+        // --- Mode Toggle ---
+        els.modeToggle.addEventListener('change', () => {
+            updateModeUI();
+            populateModels();
+            updateSessionConfig();
+        });
+
+        // --- Settings ---
+        els.settingsToggle.addEventListener('click', () => els.settingsPanel.classList.toggle('visible'));
+        els.modelSel.addEventListener('change', updateSessionConfig);
+        els.keySel.addEventListener('change', () => {
+            initGenAI();
+            initChatInstance();
+        });
+        els.sysInstr.addEventListener('change', updateSessionConfig);
+
+        // --- Tool Toggles ---
+        els.googleSearchBtn.addEventListener('click', () => {
+            els.googleSearchBtn.classList.toggle('active');
+            updateSessionConfig();
+        });
+        els.codeExecBtn.addEventListener('click', () => {
+            els.codeExecBtn.classList.toggle('active');
+            updateSessionConfig();
+        });
+        els.urlToggleBtn.addEventListener('click', () => {
+            els.urlToggleBtn.classList.toggle('active');
+            updateSessionConfig();
+        });
+
+        // --- Thinking Toggles ---
+        els.thinkingLowBtn.addEventListener('click', () => handleThinkingToggle('low'));
+        els.thinkingHighBtn.addEventListener('click', () => handleThinkingToggle('high'));
+
+        // --- Resizer responsive fix: clear inline flex styles when crossing 900px ---
+        window.addEventListener('resize', () => {
+            const isMobile = window.innerWidth <= 900;
+            // If we cross the breakpoint, reset inline styles so CSS flex rules take over
+            if (isMobile || !isMobile) {
+                els.editorPane.style.flex = '';
+                els.chatPane.style.flex = '';
+                // Clear persisted resizer when in mobile mode
+                if (isMobile) {
+                    localStorage.removeItem(LS_KEYS.resizerPercent);
+                }
+            }
+        });
+
+        // --- Guard against accidental data loss on page unload ---
+        window.addEventListener('beforeunload', (e) => {
+            const hasDirty = fileTabs.some(t => t.dirty);
+            if (hasDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+            // Best-effort synchronous persist
+            persistTabs();
+        });
+
+        // ============================================================= //
+        //  LAUNCH                                                        //
+        // ============================================================= //
+        init();
+
+    </script>
+</body>
+
+</html>

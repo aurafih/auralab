@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Terminal (Smart News Search)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0b0e14;
+            --panel-color: #131a26;
+            --text-color: #e2e8f0;
+            --sub-text: #64748b;
+            --accent-color: #3b82f6;
+            --danger-color: #ef4444;
+            --border-color: #1e293b;
+            --hover-color: #1e293b;
+            --card-bg: rgba(19, 26, 38, 0.6);
+            --glass-bg: rgba(15, 23, 42, 0.45);
+            --glass-border: rgba(59, 130, 246, 0.15);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --glow-color: rgba(59, 130, 246, 0.35);
+        }
+
+        body.theme-classic {
+            --bg-color: #131722;
+            --panel-color: #1e222d;
+            --text-color: #d1d4dc;
+            --sub-text: #787b86;
+            --accent-color: #2962ff;
+            --danger-color: #f7525f;
+            --border-color: #363a45;
+            --hover-color: #2a2e39;
+            --card-bg: rgba(30, 34, 45, 0.6);
+            --glass-bg: rgba(30, 34, 45, 0.45);
+            --glass-border: rgba(54, 58, 69, 0.4);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --glow-color: rgba(41, 98, 255, 0.35);
+        }
+
+        body.theme-emerald {
+            --bg-color: #060c0b;
+            --panel-color: #0e1716;
+            --text-color: #e0f2fe;
+            --sub-text: #6b7280;
+            --accent-color: #10b981;
+            --danger-color: #f43f5e;
+            --border-color: #112a27;
+            --hover-color: #163c37;
+            --card-bg: rgba(14, 23, 22, 0.6);
+            --glass-bg: rgba(14, 23, 22, 0.45);
+            --glass-border: rgba(16, 185, 129, 0.15);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --glow-color: rgba(16, 185, 129, 0.35);
+        }
+
+        body.theme-velvet {
+            --bg-color: #0f0a0f;
+            --panel-color: #1a0f1a;
+            --text-color: #fae8ff;
+            --sub-text: #a1a1aa;
+            --accent-color: #d946ef;
+            --danger-color: #f43f5e;
+            --border-color: #2e102e;
+            --hover-color: #4a154b;
+            --card-bg: rgba(26, 15, 26, 0.6);
+            --glass-bg: rgba(26, 15, 26, 0.45);
+            --glass-border: rgba(217, 70, 239, 0.15);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --glow-color: rgba(217, 70, 239, 0.35);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* CONTROL PANEL */
+        #controls {
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            box-shadow: 0 4px 30px var(--shadow-color);
+            padding: 12px 20px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            height: auto;
+            min-height: 60px;
+            flex-shrink: 0;
+            z-index: 10;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .control-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .label-header {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: var(--sub-text);
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            margin-bottom: 2px;
+        }
+
+        /* ASSET MANAGER STYLES */
+        .asset-manager {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 460px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(6px);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .asset-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            max-height: 60px;
+            overflow-y: auto;
+            padding: 2px 0;
+        }
+
+        .asset-tag {
+            background-color: var(--accent-color);
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 6px var(--glow-color);
+            animation: tagPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.2s;
+        }
+        .asset-tag:hover {
+            transform: translateY(-1px);
+        }
+        @keyframes tagPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .remove-asset { 
+            cursor: pointer; 
+            font-weight: bold; 
+            color: rgba(255,255,255,0.7); 
+            transition: color 0.2s;
+        }
+        .remove-asset:hover { color: #fff; }
+
+        /* INPUTS & BUTTONS */
+        input, select {
+            background: rgba(11, 14, 20, 0.6);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            height: 30px;
+            box-sizing: border-box;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        input:focus, select:focus { 
+            border-color: var(--accent-color); 
+            outline: none; 
+            box-shadow: 0 0 0 2px var(--glow-color);
+        }
+
+        button {
+            background-color: var(--hover-color);
+            color: white;
+            border: 1px solid var(--glass-border);
+            padding: 0 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            height: 30px;
+            font-size: 11px;
+            font-family: inherit;
+            transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:hover { 
+            background-color: rgba(255,255,255,0.05); 
+            border-color: var(--accent-color);
+        }
+        
+        button.primary { 
+            background-color: var(--accent-color); 
+            color: white;
+            font-weight: 700; 
+            border: none;
+            box-shadow: 0 4px 12px var(--glow-color);
+        }
+        button.primary:hover { 
+            background-color: var(--accent-color);
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+        
+        button.active { 
+            background-color: var(--text-color); 
+            color: var(--bg-color); 
+            border-color: var(--text-color);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+        }
+
+        button.preset-btn { 
+            font-size: 10px; 
+            padding: 0 8px; 
+            height: 22px; 
+            background-color: rgba(255,255,255,0.02);
+        }
+        button.preset-btn:hover {
+            background-color: var(--hover-color);
+            transform: translateY(-1px);
+        }
+
+        /* CHECKBOX GROUP */
+        .checkbox-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            height: 30px;
+            background: var(--glass-bg);
+            padding: 0 10px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+        }
+        .checkbox-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            font-size: 11px; 
+            cursor: pointer; 
+            font-weight: 500;
+            user-select: none;
+        }
+
+        /* WORKSPACE LAYOUT */
+        #workspace {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* GRID */
+        #grid-container {
+            flex-grow: 1;
+            display: grid;
+            gap: 3px;
+            padding: 3px;
+            background-color: rgba(0,0,0,0.4);
+            overflow-y: auto;
+        }
+        .chart-frame { width: 100%; height: 100%; border: none; background: #131722; border-radius: 4px; }
+
+        /* NEWS SIDEBAR */
+        #news-sidebar {
+            width: 0;
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-left: 1px solid var(--glass-border);
+            box-shadow: -10px 0 30px var(--shadow-color);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            flex-shrink: 0;
+            z-index: 5;
+        }
+
+        #news-sidebar.open {
+            width: 350px;
+        }
+
+        .sidebar-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--glass-border);
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.02);
+            color: #fff;
+        }
+
+        .news-controls {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .news-feed {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* News Card Styles */
+        .news-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeIn 0.4s ease-in-out;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .news-card:hover { 
+            border-color: var(--accent-color); 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--shadow-color), 0 0 10px var(--glow-color);
+        }
+
+        .news-img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            background: #000;
+            opacity: 0.85;
+            border-bottom: 1px solid var(--glass-border);
+            transition: transform 0.3s;
+        }
+        .news-card:hover .news-img {
+            transform: scale(1.03);
+            opacity: 1;
+        }
+
+        .news-content { padding: 12px; }
+        
+        .news-source {
+            font-size: 10px;
+            color: var(--accent-color);
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .news-headline {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            line-height: 1.4;
+            color: #fff;
+        }
+
+        .news-summary {
+            font-size: 11px;
+            color: var(--sub-text);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .news-link { text-decoration: none; color: inherit; }
+        
+        .loading-text { text-align: center; color: var(--sub-text); font-size: 12px; padding: 20px 10px; font-weight: 500; }
+        .resolve-info { font-size: 10px; color: var(--accent-color); margin-top: -5px; margin-bottom: 5px; text-align: right; font-style: italic;}
+
+        /* SKELETON LOADING EFFECTS */
+        .skeleton-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            height: 220px;
+        }
+
+        .skeleton-shimmer::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            transform: translateX(-100%);
+            background-image: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.05) 20%,
+                rgba(255, 255, 255, 0.1) 60%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .skeleton-img {
+            height: 100px;
+            background-color: var(--hover-color);
+            border-radius: 6px;
+            opacity: 0.4;
+        }
+
+        .skeleton-line {
+            height: 12px;
+            background-color: var(--hover-color);
+            border-radius: 4px;
+            width: 100%;
+            opacity: 0.5;
+        }
+
+        .skeleton-line.short {
+            width: 60%;
+        }
+
+        .skeleton-line.title {
+            height: 16px;
+            width: 90%;
+            margin-bottom: 4px;
+            opacity: 0.6;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+
+        /* AUTOCOMPLETE & CLOCK WIDGET STYLES */
+        .autocomplete-suggestions {
+            position: absolute;
+            background: var(--panel-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 8px 16px var(--shadow-color);
+        }
+        .suggestion-item {
+            padding: 6px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            color: var(--text-color);
+        }
+        .suggestion-item:hover {
+            background: var(--hover-color);
+            color: #fff;
+        }
+        .clock-widget {
+            display: flex;
+            gap: 15px;
+            margin-left: auto;
+            background: rgba(0,0,0,0.25);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            font-size: 11px;
+            font-family: monospace;
+            color: var(--text-color);
+            align-self: center;
+        }
+        .clock-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .clock-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: var(--sub-text);
+            font-weight: bold;
+        }
+        .clock-time {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+        #controls.collapsed {
+            padding: 0 !important;
+            min-height: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            border-bottom: none !important;
+        }
+
+        /* SENTIMENT BADGE STYLES */
+        .sentiment-badge {
+            display: inline-block;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .sentiment-bullish {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .sentiment-bearish {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .sentiment-neutral {
+            background-color: rgba(100, 116, 139, 0.15);
+            color: #64748b;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CONTROLS -->
+    <div id="controls">
+        <!-- ASSET SELECTOR -->
+        <div class="control-section">
+            <div class="label-header">Assets</div>
+            <div class="asset-manager">
+                <div class="asset-list" id="assetListDisplay"></div>
+                <div class="input-row">
+                    <div style="position:relative; flex-grow:1; display:flex;">
+                        <input type="text" id="newTickerInput" placeholder="Symbol (e.g. AAPL, BTCUSDT)" style="width:100%;" onkeypress="handleEnter(event)" oninput="showSuggestions(this.value)">
+                        <div id="autocomplete-list" class="autocomplete-suggestions" style="display:none; position:absolute; top:32px; left:0; width:100%;"></div>
+                    </div>
+                    <button onclick="addCurrentTicker()">+</button>
+                    <button class="danger" onclick="clearAssets()" style="background:#442a2a; color:#ff6666;">Clear</button>
+                </div>
+                <div style="display:flex; gap:5px; margin-top:2px; flex-wrap:wrap;">
+                    <button class="preset-btn" onclick="loadPreset('crypto')">Crypto</button>
+                    <button class="preset-btn" onclick="loadPreset('tech')">Tech</button>
+                    <button class="preset-btn" onclick="loadPreset('forex')">Forex</button>
+                    <button class="preset-btn" onclick="loadPreset('semis')">Semis</button>
+                    <button class="preset-btn" onclick="loadPreset('energy')">Energy</button>
+                    <button class="preset-btn" onclick="loadPreset('etfs')">ETFs</button>
+                    <button class="preset-btn" onclick="loadPreset('emerging')">Emerging Mkts</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LAYOUT -->
+        <div class="control-section">
+            <div class="label-header">Layout</div>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <input type="number" id="chartCount" value="4" min="1" max="20" title="Total Charts" style="width: 50px;" onchange="saveState()">
+                <span style="font-size:10px; color:#666;">Total</span>
+            </div>
+            <div style="display: flex; gap: 5px; align-items: center; margin-top:5px;">
+                <input type="number" id="colCount" value="2" min="1" max="10" title="Columns" style="width: 50px;" onchange="saveState()">
+                <span style="font-size:10px; color:#666;">Cols</span>
+            </div>
+        </div>
+
+        <!-- TIMEFRAME & STYLE -->
+        <div class="control-section">
+            <div class="label-header">Config</div>
+            <select id="chartInterval" onchange="saveState()">
+                <option value="D">Daily</option>
+                <option value="240">4 Hours</option>
+                <option value="60">1 Hour</option>
+                <option value="15">15 Min</option>
+                <option value="5">5 Min</option>
+                <option value="1">1 Min</option>
+            </select>
+            <select id="chartStyle" style="margin-top:5px;" onchange="saveState()">
+                <option value="1">Candles</option>
+                <option value="2">Line</option>
+                <option value="8">Heikin Ashi</option>
+            </select>
+            <select id="themeSelector" style="margin-top:5px;" onchange="changeTheme()">
+                <option value="classic">Classic Dark</option>
+                <option value="sapphire">Sapphire Slate</option>
+                <option value="emerald">Emerald Cyber</option>
+                <option value="velvet">Velvet Ruby</option>
+            </select>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <button class="preset-btn" onclick="exportConfig()" title="Export configuration to clipboard" style="flex-grow:1;">Export</button>
+                <button class="preset-btn" onclick="importConfig()" title="Import configuration from clipboard" style="flex-grow:1;">Import</button>
+            </div>
+        </div>
+
+        <!-- INDICATORS -->
+        <div class="control-section">
+            <div class="label-header">Indicators</div>
+            <div class="checkbox-group">
+                <label class="checkbox-item"><input type="checkbox" id="ind_rsi" onchange="saveState()"> RSI</label>
+                <label class="checkbox-item"><input type="checkbox" id="ind_ma" onchange="saveState()"> MA</label>
+                <label class="checkbox-item"><input type="checkbox" id="ind_macd" onchange="saveState()"> MACD</label>
+            </div>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <button class="primary" onclick="renderDashboard()" style="flex-grow:1;">RELOAD GRID</button>
+                <button id="toggleNewsBtn" onclick="toggleSidebar()">NEWS</button>
+                <button id="collapseBtn" onclick="toggleControls()" title="Hide Controls" style="width:30px; min-width:30px; padding:0;">⛶</button>
+            </div>
+        </div>
+        <!-- CLOCK WIDGET -->
+        <div class="clock-widget" id="clockWidget">
+            <div class="clock-item">
+                <span class="clock-label">Local Time</span>
+                <span class="clock-time" id="localClockTime">--:--:--</span>
+            </div>
+            <div class="clock-item">
+                <span class="clock-label">UTC Time</span>
+                <span class="clock-time" id="utcClockTime">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- WORKSPACE AREA -->
+    <div id="workspace">
+        <button id="expandControlsBtn" onclick="toggleControls()" style="display: none; position: absolute; top: 12px; left: 12px; z-index: 99; background: var(--panel-color); border: 1px solid var(--glass-border); box-shadow: 0 4px 12px var(--shadow-color); border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; align-items: center; gap: 6px;">⛶ Show Controls</button>
+        <div id="grid-container"></div>
+        
+        <div id="news-sidebar">
+            <div class="sidebar-header">
+                <span>MARKET INTELLIGENCE</span>
+                <span style="cursor:pointer; font-size:16px;" onclick="toggleSidebar()">×</span>
+            </div>
+            
+            <div class="news-controls">
+                <!-- API Key Input -->
+                <div class="input-row" style="flex-direction: column; gap: 4px;">
+                    <div style="position:relative; width:100%; display:flex; align-items:center;">
+                        <input type="password" id="finnhubKey" placeholder="Finnhub API Key" style="width:100%; padding-right:45px;" oninput="validateApiKey()" onchange="saveApiKey()">
+                        <span id="toggleKeyVisible" onclick="toggleKeyVisibility()" style="position:absolute; right:28px; cursor:pointer; font-size:12px; color:var(--sub-text); user-select:none;">👁</span>
+                        <span id="keyStatusIndicator" style="position:absolute; right:8px; display:inline-block; width:8px; height:8px; border-radius:50%; background-color:#666;" title="No Key Entered"></span>
+                    </div>
+                    <div id="keyValidationMessage" style="font-size:9px; color:var(--sub-text); margin-top:2px;">Enter API key for company news search.</div>
+                </div>
+                <!-- Search Box -->
+                <div class="input-row">
+                    <input type="text" id="newsSearchInput" placeholder="Name (Apple), Sym (AAPL) or General" style="flex-grow:1;" onkeypress="handleNewsSearchEnter(event)">
+                    <button class="primary" onclick="triggerNewsSearch()">GO</button>
+                </div>
+                <div id="search-feedback" class="resolve-info"></div>
+            </div>
+
+            <div id="news-feed" class="news-feed" onscroll="checkScroll()">
+                <div style="text-align:center; padding:20px; color:#666; font-size:12px;">
+                    Enter Key & Search.<br>Type "Crypto", "Forex" or any Company Name.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default State
+        let activeTickers = ["BINANCE:BTCUSDT", "BINANCE:ETHUSDT", "NASDAQ:NVDA", "COINBASE:SOLUSD"];
+        
+        // News State
+        let allNewsData = [];
+        let renderedNewsCount = 0;
+        const BATCH_SIZE = 5;
+        const CATEGORIES = ['general', 'forex', 'crypto', 'merger'];
+        
+        // --- INITIALIZATION ---
+        function init() {
+            loadState();
+            const savedKey = localStorage.getItem('finnhub_key');
+            if(savedKey) {
+                document.getElementById('finnhubKey').value = savedKey;
+            }
+            validateApiKey();
+            updateClocks();
+            setInterval(updateClocks, 1000);
+            renderAssetTags();
+            renderDashboard();
+        }
+
+        // --- STATE MANAGEMENT ---
+        function saveState() {
+            const state = {
+                tickers: activeTickers,
+                chartCount: document.getElementById('chartCount').value,
+                colCount: document.getElementById('colCount').value,
+                interval: document.getElementById('chartInterval').value,
+                style: document.getElementById('chartStyle').value,
+                theme: document.getElementById('themeSelector').value,
+                controlsCollapsed: document.getElementById('controls').classList.contains('collapsed'),
+                indicators: {
+                    rsi: document.getElementById('ind_rsi').checked,
+                    ma: document.getElementById('ind_ma').checked,
+                    macd: document.getElementById('ind_macd').checked
+                },
+                sidebarOpen: document.getElementById('news-sidebar').classList.contains('open')
+            };
+            localStorage.setItem('pro_terminal_state', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('pro_terminal_state');
+            if (!saved) return;
+            try {
+                const state = JSON.parse(saved);
+                if (state.tickers && Array.isArray(state.tickers)) activeTickers = state.tickers;
+                if (state.chartCount) document.getElementById('chartCount').value = state.chartCount;
+                if (state.colCount) document.getElementById('colCount').value = state.colCount;
+                if (state.interval) document.getElementById('chartInterval').value = state.interval;
+                if (state.style) document.getElementById('chartStyle').value = state.style;
+                if (state.theme) {
+                    document.getElementById('themeSelector').value = state.theme;
+                    changeTheme();
+                }
+                if (state.controlsCollapsed) {
+                    document.getElementById('controls').classList.add('collapsed');
+                    document.getElementById('expandControlsBtn').style.display = 'flex';
+                }
+                if (state.indicators) {
+                    document.getElementById('ind_rsi').checked = state.indicators.rsi;
+                    document.getElementById('ind_ma').checked = state.indicators.ma;
+                    document.getElementById('ind_macd').checked = state.indicators.macd;
+                }
+                if (state.sidebarOpen) {
+                    document.getElementById('news-sidebar').classList.add('open');
+                    document.getElementById('toggleNewsBtn').classList.add('active');
+                    setTimeout(() => triggerNewsSearch(), 500); 
+                }
+            } catch (e) { console.error("State load error:", e); }
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('finnhubKey').value.trim();
+            if(key) {
+                localStorage.setItem('finnhub_key', key);
+            } else {
+                localStorage.removeItem('finnhub_key');
+            }
+            validateApiKey();
+        }
+
+        // --- ASSET MANAGEMENT ---
+        function renderAssetTags() {
+            const container = document.getElementById('assetListDisplay');
+            container.innerHTML = '';
+            activeTickers.forEach((ticker, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'asset-tag';
+                const displayText = ticker.includes(':') ? ticker.split(':')[1] : ticker;
+                tag.innerHTML = `${displayText} <span class="remove-asset" onclick="removeTicker(${index})">×</span>`;
+                container.appendChild(tag);
+            });
+        }
+
+        function addCurrentTicker() {
+            const input = document.getElementById('newTickerInput');
+            let val = input.value.trim().toUpperCase();
+            if (!val) return;
+            if (val === 'BTC' || val === 'ETH' || val === 'SOL') val = `BINANCE:${val}USDT`;
+            if (!activeTickers.includes(val)) {
+                activeTickers.push(val);
+                renderAssetTags();
+                input.value = '';
+                saveState(); 
+            }
+        }
+
+        function removeTicker(index) {
+            activeTickers.splice(index, 1);
+            renderAssetTags();
+            saveState(); 
+        }
+
+        function clearAssets() {
+            activeTickers = [];
+            renderAssetTags();
+            saveState(); 
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') addCurrentTicker();
+        }
+
+        function loadPreset(type) {
+            if (type === 'crypto') {
+                activeTickers = ["BINANCE:BTCUSDT", "BINANCE:ETHUSDT", "BINANCE:SOLUSDT", "BINANCE:BNBUSDT", "BINANCE:XRPUSDT", "BINANCE:DOGEUSDT"];
+            } else if (type === 'tech') {
+                activeTickers = ["NASDAQ:NVDA", "NASDAQ:TSLA", "NASDAQ:AAPL", "NASDAQ:MSFT", "NASDAQ:AMD", "NASDAQ:AMZN"];
+            } else if (type === 'forex') {
+                activeTickers = ["FX:EURUSD", "FX:GBPUSD", "FX:USDJPY", "FX:AUDUSD"];
+            } else if (type === 'semis') {
+                activeTickers = ["NYSE:TSM", "NASDAQ:AVGO", "NASDAQ:INTC", "NASDAQ:AMD", "NASDAQ:MU", "NASDAQ:NVDA"];
+            } else if (type === 'energy') {
+                activeTickers = ["NYSE:XOM", "NYSE:CVX", "NYSE:COP", "NYSE:SHEL", "NYSE:SLB", "NYSE:ENB"];
+            } else if (type === 'etfs') {
+                activeTickers = ["AMEX:SPY", "NASDAQ:QQQ", "AMEX:DIA", "AMEX:IWM", "AMEX:VTI", "AMEX:GLD"];
+            } else if (type === 'emerging') {
+                activeTickers = ["AMEX:EEM", "AMEX:FXI", "AMEX:EWZ", "AMEX:INDA", "AMEX:EWT", "AMEX:EWY"];
+            }
+            document.getElementById('chartCount').value = activeTickers.length;
+            renderAssetTags();
+            renderDashboard();
+            saveState(); 
+        }
+
+        // --- CHART RENDERING ---
+        function renderDashboard() {
+            saveState(); 
+            const container = document.getElementById('grid-container');
+            container.innerHTML = ''; 
+            const tickersToUse = activeTickers.length > 0 ? activeTickers : ["BINANCE:BTCUSDT"];
+            const totalCharts = parseInt(document.getElementById('chartCount').value);
+            const columns = parseInt(document.getElementById('colCount').value);
+            const interval = document.getElementById('chartInterval').value;
+            const style = document.getElementById('chartStyle').value;
+
+            container.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+
+            let studies = [];
+            if(document.getElementById('ind_rsi').checked) studies.push("RSI@tv-basicstudies");
+            if(document.getElementById('ind_ma').checked) studies.push("MASimple@tv-basicstudies");
+            if(document.getElementById('ind_macd').checked) studies.push("MACD@tv-basicstudies");
+
+            for (let i = 0; i < totalCharts; i++) {
+                const symbol = tickersToUse[i % tickersToUse.length];
+                const widgetConfig = {
+                    "autosize": true, "symbol": symbol, "interval": interval,
+                    "timezone": "Etc/UTC", "theme": "dark", "style": style,
+                    "locale": "en", "enable_publishing": false, "hide_top_toolbar": false,
+                    "save_image": false, "hide_volume": true, "studies": studies
+                };
+
+                const htmlContent = `
+                    <!DOCTYPE html>
+                    <html style="height:100%;overflow:hidden;">
+                    <head><style>body{margin:0;height:100%;background:#131722;}</style></head>
+                    <body>
+                        <div class="tradingview-widget-container" style="height:100%;width:100%">
+                            <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+                            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                                ${JSON.stringify(widgetConfig)}
+                            <\/script>
+                        </div>
+                    </body>
+                    </html>
+                `;
+                const iframe = document.createElement('iframe');
+                iframe.className = 'chart-frame';
+                iframe.srcdoc = htmlContent;
+                container.appendChild(iframe);
+            }
+        }
+
+        // --- NEWS LOGIC (ENHANCED) ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('news-sidebar');
+            const btn = document.getElementById('toggleNewsBtn');
+            sidebar.classList.toggle('open');
+            const isOpen = sidebar.classList.contains('open');
+            if(isOpen) {
+                btn.classList.add('active');
+                if(allNewsData.length === 0) triggerNewsSearch();
+            } else {
+                btn.classList.remove('active');
+            }
+            saveState(); 
+        }
+
+        function handleNewsSearchEnter(e) {
+            if(e.key === 'Enter') triggerNewsSearch();
+        }
+
+        async function triggerNewsSearch() {
+            const key = document.getElementById('finnhubKey').value.trim();
+            let query = document.getElementById('newsSearchInput').value.trim();
+            const feedback = document.getElementById('search-feedback');
+            
+            if(!key) return; 
+            saveApiKey(); 
+
+            const feed = document.getElementById('news-feed');
+            showNewsSkeleton();
+            feedback.innerHTML = '';
+            
+            allNewsData = [];
+            renderedNewsCount = 0;
+
+            try {
+                let url = '';
+                
+                // 1. Empty Query -> General News
+                if (!query) {
+                    url = `https://finnhub.io/api/v1/news?category=general&token=${key}`;
+                    feedback.innerHTML = 'Showing: General Market News';
+                } 
+                // 2. Category Search (Crypto, Forex)
+                else if (CATEGORIES.includes(query.toLowerCase())) {
+                    url = `https://finnhub.io/api/v1/news?category=${query.toLowerCase()}&token=${key}`;
+                    feedback.innerHTML = `Showing Category: ${query.toUpperCase()}`;
+                }
+                // 3. Keyword / Company Search
+                else {
+                    showNewsSkeleton();
+                    
+                    // Step A: Search for a symbol
+                    const searchRes = await fetch(`https://finnhub.io/api/v1/search?q=${query}&token=${key}`);
+                    const searchData = await searchRes.json();
+                    
+                    if (searchData.count > 0) {
+                        const topMatch = searchData.result[0];
+                        const symbol = topMatch.symbol;
+                        const desc = topMatch.description || symbol;
+                        
+                        feedback.innerHTML = `Resolved: ${desc} (${symbol})`;
+                        
+                        // Step B: Fetch Company News
+                        const today = new Date().toISOString().split('T')[0];
+                        const pastDate = new Date();
+                        pastDate.setDate(pastDate.getDate() - 30);
+                        const fromDate = pastDate.toISOString().split('T')[0];
+                        
+                        url = `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${fromDate}&to=${today}&token=${key}`;
+                    } else {
+                        // Fallback: No symbol found
+                        feed.innerHTML = `<div class="loading-text">No asset found for "${query}".<br>Try a ticker symbol.</div>`;
+                        return;
+                    }
+                }
+
+                // Execute the Final News Fetch
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('API Error');
+                
+                const data = await response.json();
+
+                if(data.length === 0) {
+                    feed.innerHTML = '<div class="loading-text">No recent news found for this target.</div>';
+                    return;
+                }
+
+                allNewsData = data;
+                feed.innerHTML = ''; 
+                renderNextBatch();
+
+            } catch (error) {
+                feed.innerHTML = '<div style="text-align:center; padding:20px; color:#f7525f;">Error loading news. Check Key/Connection.</div>';
+                console.error(error);
+            }
+        }
+
+        function renderNextBatch() {
+            const feed = document.getElementById('news-feed');
+            const nextIndex = renderedNewsCount + BATCH_SIZE;
+            const batch = allNewsData.slice(renderedNewsCount, nextIndex);
+            
+            if(batch.length === 0) return;
+
+            batch.forEach(item => {
+                const card = document.createElement('a');
+                card.className = 'news-card news-link';
+                card.href = item.url;
+                card.target = "_blank";
+                const timeString = timeAgo(item.datetime);
+                const hasImage = item.image && item.image.length > 0;
+                const sentiment = getSentiment(item.headline, item.summary);
+
+                card.innerHTML = `
+                    ${hasImage ? `<img src="${item.image}" class="news-img" onerror="this.style.display='none'">` : ''}
+                    <div class="news-content">
+                        <div class="news-source">
+                            <span>${item.source}</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="sentiment-badge ${sentiment.class}">${sentiment.text}</span>
+                                <span>${timeString}</span>
+                            </div>
+                        </div>
+                        <div class="news-headline">${item.headline}</div>
+                        <div class="news-summary">${item.summary}</div>
+                    </div>
+                `;
+                feed.appendChild(card);
+            });
+
+            renderedNewsCount = nextIndex;
+        }
+
+        function checkScroll() {
+            const feed = document.getElementById('news-feed');
+            if (feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 50) {
+                renderNextBatch();
+            }
+        }
+
+        function timeAgo(unixTimestamp) {
+            const seconds = Math.floor((new Date() - (unixTimestamp * 1000)) / 1000);
+            let interval = seconds / 3600;
+            if (interval > 24) return Math.floor(interval/24) + "d ago";
+            if (interval > 1) return Math.floor(interval) + "h ago";
+            interval = seconds / 60;
+            if (interval > 1) return Math.floor(interval) + "m ago";
+            return "Just now";
+        }
+
+        function changeTheme() {
+            const val = document.getElementById('themeSelector').value;
+            document.body.className = '';
+            if (val !== 'classic') {
+                document.body.classList.add(`theme-${val}`);
+            }
+            saveState();
+        }
+
+        function showNewsSkeleton() {
+            const feed = document.getElementById('news-feed');
+            feed.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const skel = document.createElement('div');
+                skel.className = 'skeleton-card skeleton-shimmer';
+                skel.innerHTML = `
+                    <div class="skeleton-img"></div>
+                    <div class="skeleton-line title"></div>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line short"></div>
+                `;
+                feed.appendChild(skel);
+            }
+        }
+
+        // --- NEW UTILITIES & AUTOCOMPLETE LOGIC ---
+        const POPULAR_TICKERS = [
+            "BINANCE:BTCUSDT", "BINANCE:ETHUSDT", "BINANCE:SOLUSDT", "BINANCE:BNBUSDT", "BINANCE:XRPUSDT", "BINANCE:DOGEUSDT", "BINANCE:ADAUSDT",
+            "NASDAQ:NVDA", "NASDAQ:TSLA", "NASDAQ:AAPL", "NASDAQ:MSFT", "NASDAQ:AMD", "NASDAQ:AMZN", "NASDAQ:META", "NASDAQ:GOOGL",
+            "FX:EURUSD", "FX:GBPUSD", "FX:USDJPY", "FX:AUDUSD", "FX:USDCAD",
+            "NYSE:TSM", "NASDAQ:AVGO", "NASDAQ:INTC", "NASDAQ:MU",
+            "NYSE:XOM", "NYSE:CVX", "NYSE:COP",
+            "AMEX:SPY", "NASDAQ:QQQ", "AMEX:DIA", "AMEX:IWM", "AMEX:VTI", "AMEX:GLD"
+        ];
+
+        function showSuggestions(val) {
+            const list = document.getElementById('autocomplete-list');
+            if (!val) {
+                list.style.display = 'none';
+                return;
+            }
+            const cleanVal = val.toUpperCase().trim();
+            const matches = POPULAR_TICKERS.filter(t => {
+                const parts = t.includes(':') ? t.split(':') : [t];
+                return parts.some(p => p.startsWith(cleanVal)) || t.startsWith(cleanVal);
+            }).slice(0, 5);
+
+            if (matches.length === 0) {
+                list.style.display = 'none';
+                return;
+            }
+
+            list.innerHTML = '';
+            matches.forEach(m => {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.textContent = m;
+                item.onclick = () => {
+                    document.getElementById('newTickerInput').value = m;
+                    list.style.display = 'none';
+                    addCurrentTicker();
+                };
+                list.appendChild(item);
+            });
+            list.style.display = 'block';
+        }
+
+        // Close suggestions list on click outside
+        document.addEventListener('click', function(e) {
+            const list = document.getElementById('autocomplete-list');
+            const input = document.getElementById('newTickerInput');
+            if (list && e.target !== input && e.target !== list) {
+                list.style.display = 'none';
+            }
+        });
+
+        function toggleKeyVisibility() {
+            const keyInput = document.getElementById('finnhubKey');
+            const toggleBtn = document.getElementById('toggleKeyVisible');
+            if (keyInput.type === 'password') {
+                keyInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                keyInput.type = 'password';
+                toggleBtn.textContent = '👁';
+            }
+        }
+
+        function validateApiKey() {
+            const key = document.getElementById('finnhubKey').value.trim();
+            const indicator = document.getElementById('keyStatusIndicator');
+            const msg = document.getElementById('keyValidationMessage');
+            if (!key) {
+                indicator.style.backgroundColor = '#666';
+                indicator.title = 'No Key';
+                msg.textContent = 'Enter API key for company news search.';
+                msg.style.color = 'var(--sub-text)';
+            } else if (key.length === 20 && /^[a-zA-Z0-9]+$/.test(key)) {
+                indicator.style.backgroundColor = '#10b981';
+                indicator.title = 'Valid Key Format';
+                msg.textContent = '✓ Format looks correct.';
+                msg.style.color = '#10b981';
+            } else {
+                indicator.style.backgroundColor = '#f7525f';
+                indicator.title = 'Invalid Key Format';
+                msg.textContent = '⚠ Warning: Typical key is 20 alphanumeric characters.';
+                msg.style.color = '#f7525f';
+            }
+        }
+
+        function toggleControls() {
+            const panel = document.getElementById('controls');
+            const expandBtn = document.getElementById('expandControlsBtn');
+            panel.classList.toggle('collapsed');
+            const isCollapsed = panel.classList.contains('collapsed');
+            expandBtn.style.display = isCollapsed ? 'flex' : 'none';
+            saveState();
+        }
+
+        function updateClocks() {
+            const localTimeEl = document.getElementById('localClockTime');
+            const utcTimeEl = document.getElementById('utcClockTime');
+            if (!localTimeEl || !utcTimeEl) return;
+            const now = new Date();
+            localTimeEl.textContent = now.toLocaleTimeString();
+            utcTimeEl.textContent = now.toUTCString().slice(17, 25) + ' UTC';
+        }
+
+        function getSentiment(headline, summary) {
+            const text = ((headline || '') + ' ' + (summary || '')).toLowerCase();
+            
+            const bullishWords = ['bullish', 'surge', 'rally', 'growth', 'upbeat', 'jump', 'gain', 'higher', 'positive', 'beat', 'upgrade', 'outperform', 'soar', 'skyrocket'];
+            const bearishWords = ['bearish', 'drop', 'plunge', 'decline', 'slide', 'lower', 'plummet', 'negative', 'miss', 'downgrade', 'underperform', 'loss', 'sink', 'slump', 'fall', 'dump', 'crash'];
+            
+            let bullScore = 0;
+            let bearScore = 0;
+            
+            bullishWords.forEach(w => {
+                const regex = new RegExp('\\b' + w + '\\b', 'g');
+                const matches = text.match(regex);
+                if (matches) bullScore += matches.length;
+            });
+            
+            bearishWords.forEach(w => {
+                const regex = new RegExp('\\b' + w + '\\b', 'g');
+                const matches = text.match(regex);
+                if (matches) bearScore += matches.length;
+            });
+            
+            if (bullScore > bearScore) {
+                return { text: 'Bullish', class: 'sentiment-bullish' };
+            } else if (bearScore > bullScore) {
+                return { text: 'Bearish', class: 'sentiment-bearish' };
+            }
+            return { text: 'Neutral', class: 'sentiment-neutral' };
+        }
+
+        function exportConfig() {
+            const savedState = localStorage.getItem('pro_terminal_state');
+            const savedKey = localStorage.getItem('finnhub_key');
+            const config = {
+                state: savedState ? JSON.parse(savedState) : null,
+                key: savedKey || null
+            };
+            const configStr = JSON.stringify(config);
+            navigator.clipboard.writeText(configStr)
+                .then(() => alert("Configuration copied to clipboard successfully!"))
+                .catch(err => {
+                    console.error("Clipboard export failed:", err);
+                    alert("Could not copy to clipboard. Config JSON:\n" + configStr);
+                });
+        }
+
+        function importConfig() {
+            const configStr = prompt("Paste your configuration JSON here:");
+            if (!configStr) return;
+            try {
+                const config = JSON.parse(configStr.trim());
+                if (config.state) {
+                    localStorage.setItem('pro_terminal_state', JSON.stringify(config.state));
+                }
+                if (config.key) {
+                    localStorage.setItem('finnhub_key', config.key);
+                }
+                loadState();
+                const savedKey = localStorage.getItem('finnhub_key');
+                if (savedKey) {
+                    document.getElementById('finnhubKey').value = savedKey;
+                } else {
+                    document.getElementById('finnhubKey').value = '';
+                }
+                validateApiKey();
+                renderAssetTags();
+                renderDashboard();
+                alert("Configuration imported successfully!");
+            } catch (e) {
+                alert("Failed to parse configuration JSON: " + e.message);
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

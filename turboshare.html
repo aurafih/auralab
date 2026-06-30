@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turbo Multi-Share</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --primary: #3b82f6; --text: #f8fafc; --green: #22c55e; --gray: #94a3b8; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        
+        .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); padding: 40px 30px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 100%; max-width: 480px; border: 1px solid rgba(255,255,255,0.1); text-align: center; margin-bottom: 20px; transition: transform 0.3s, opacity 0.3s; }
+        .hidden { display: none !important; opacity: 0; }
+        h1 { margin: 0 0 10px; font-size: 2.2rem; font-weight: 800; background: -webkit-linear-gradient(45deg, #60a5fa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Buttons & Inputs */
+        .btn { border: none; padding: 16px; border-radius: 16px; font-size: 1.1rem; font-weight: 600; cursor: pointer; width: 100%; margin-top: 15px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-rx { background: linear-gradient(135deg, #22c55e, #10b981); color: white; box-shadow: 0 8px 20px -6px rgba(34, 197, 94, 0.5); }
+        .btn-tx { background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; box-shadow: 0 8px 20px -6px rgba(59, 130, 246, 0.5); }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: white; margin-top: 15px; }
+        .btn:hover { transform: translateY(-3px); filter: brightness(1.1); }
+        .btn:active { transform: scale(0.96); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        input.code { font-size: 2.5rem; width: 100%; text-align: center; padding: 15px; border-radius: 16px; border: 2px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; letter-spacing: 8px; font-family: 'Courier New', monospace; font-weight: bold; box-sizing: border-box; transition: border-color 0.3s, box-shadow 0.3s; }
+        input.code:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2); }
+        .big-code { font-size: 4rem; font-family: 'Courier New', monospace; letter-spacing: 10px; font-weight: 800; margin: 20px 0; color: #fbbf24; cursor: pointer; transition: transform 0.2s; text-shadow: 0 0 20px rgba(251, 191, 36, 0.3); }
+        .big-code:hover { transform: scale(1.05); }
+
+        /* Dashboard */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-val { font-size: 1.8rem; font-weight: 800; color: #60a5fa; }
+        .stat-lbl { font-size: 0.8rem; color: var(--gray); text-transform: uppercase; font-weight: 700; margin-top: 4px; letter-spacing: 0.5px; }
+
+        /* Progress & List */
+        .progress-bar { height: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden; margin: 20px 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); transition: width 0.2s ease-out; border-radius: 6px; }
+        
+        .file-list { text-align: left; max-height: 220px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 16px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); margin-top: 15px; }
+        .file-item { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; }
+        .file-item:last-child { border-bottom: none; }
+        .file-done { color: #34d399; }
+        .file-pending { color: var(--gray); }
+        .file-active { color: white; font-weight: 600; background: rgba(255,255,255,0.05); border-radius: 8px; }
+
+        /* Drag & Drop Zone */
+        .drop-zone { border: 2px dashed rgba(255,255,255,0.2); border-radius: 16px; padding: 30px; margin-bottom: 15px; transition: all 0.3s; cursor: pointer; background: rgba(0,0,0,0.1); }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: rgba(59, 130, 246, 0.1); }
+        .drop-zone p { margin: 0; color: var(--gray); font-size: 1rem; margin-top: 10px; font-weight: 500; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <!-- SCREEN 1: MENU -->
+    <div id="screen-menu" class="card">
+        <h1>Turbo Multi-Share</h1>
+        <p style="color:var(--gray); margin-bottom: 30px;">Lightning fast peer-to-peer file transfer.</p>
+        <button class="btn btn-rx" onclick="startReceiver()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Receive Files
+        </button>
+        <button class="btn btn-tx" onclick="startSender()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Send Files
+        </button>
+    </div>
+
+    <!-- SCREEN 2: RECEIVER -->
+    <div id="screen-rx" class="card hidden">
+        <p style="color:var(--gray)">Your Receive Code</p>
+        <div class="big-code" id="my-code" onclick="copyCode()" title="Click to copy">...</div>
+        <p id="rx-status" style="color:#fbbf24; font-weight: 500;">Waiting for sender to connect...</p>
+        <button class="btn btn-cancel" onclick="location.reload()">Cancel</button>
+    </div>
+
+    <!-- SCREEN 3: SENDER -->
+    <div id="screen-tx" class="card hidden">
+        <p style="color:var(--gray); margin-bottom: 20px;">Enter Receiver's Code</p>
+        <input type="tel" id="partner-code" class="code" placeholder="0000" maxlength="4" autocomplete="off">
+        <button class="btn btn-tx" id="btn-connect" onclick="connect()">Connect</button>
+        <button class="btn btn-cancel" onclick="location.reload()">Cancel</button>
+    </div>
+
+    <!-- SCREEN 4: DASHBOARD -->
+    <div id="screen-dash" class="card hidden">
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-val" id="disp-speed">0.0</div>
+                <div class="stat-lbl">MB/s</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="disp-ping">--</div>
+                <div class="stat-lbl">Ping (ms)</div>
+            </div>
+        </div>
+
+        <div id="tx-area" class="hidden">
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                <p>Click or drag files here to send</p>
+            </div>
+            <input type="file" id="file-input" multiple class="hidden" onchange="startBatchSend()">
+        </div>
+
+        <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+        <div id="status-text" style="color:var(--text); font-weight:500; font-size:1rem; margin-bottom:10px;">Connected</div>
+        
+        <!-- Queue List -->
+        <div class="file-list" id="file-list-ui"></div>
+    </div>
+
+<script>
+    const APP_ID = "turbo-share-v8-"; 
+    let peer, conn;
+    
+    // --- SETUP & NAV ---
+    function show(id) {
+        document.querySelectorAll('.card').forEach(el => {
+            el.classList.add('hidden');
+        });
+        setTimeout(() => {
+            document.getElementById(id).classList.remove('hidden');
+        }, 50); // slight delay for transition
+    }
+
+    // --- RECEIVER ---
+    function startReceiver() {
+        show('screen-rx');
+        const code = Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('my-code').innerText = code;
+        
+        peer = new Peer(APP_ID + code);
+        peer.on('connection', (c) => {
+            conn = c;
+            setupLink(true);
+        });
+        peer.on('error', err => {
+            console.error("Net Error:", err);
+            document.getElementById('rx-status').innerText = "Error: " + err.type;
+        });
+    }
+
+    function copyCode() {
+        const code = document.getElementById('my-code').innerText;
+        if(code === "..." || code === "COPIED") return;
+        navigator.clipboard.writeText(code).then(() => {
+            const el = document.getElementById('my-code');
+            const original = el.innerText;
+            el.innerText = "COPIED";
+            setTimeout(() => el.innerText = original, 1500);
+        });
+    }
+
+    // --- SENDER ---
+    function startSender() {
+        show('screen-tx');
+        peer = new Peer(); 
+        peer.on('open', () => console.log("Sender Ready"));
+        setTimeout(() => document.getElementById('partner-code').focus(), 100);
+    }
+
+    document.getElementById('partner-code').addEventListener('input', function(e) {
+        if(this.value.length === 4) {
+            connect();
+        }
+    });
+
+    function connect() {
+        const code = document.getElementById('partner-code').value;
+        if(code.length !== 4) return;
+        const btn = document.getElementById('btn-connect');
+        btn.disabled = true;
+        btn.innerText = "Connecting...";
+        
+        conn = peer.connect(APP_ID + code, { reliable: true });
+        conn.on('open', () => setupLink(false));
+        conn.on('error', () => {
+            console.warn("Connection Failed");
+            const btn = document.getElementById('btn-connect');
+            btn.disabled = false;
+            btn.innerText = "Connect";
+            document.getElementById('status-text').innerText = "Connection failed. Check code.";
+        });
+    }
+
+    // --- COMMON ---
+    function setupLink(isReceiver) {
+        show('screen-dash');
+        if(isReceiver) document.getElementById('status-text').innerText = "Waiting for files...";
+        else {
+            document.getElementById('tx-area').classList.remove('hidden');
+            document.getElementById('status-text').innerText = "Ready to send.";
+            setupDragAndDrop();
+        }
+
+        // Ping (Heartbeat)
+        setInterval(() => {
+            if(conn && conn.open) conn.send({ type: 'ping', time: Date.now() });
+        }, 1000);
+
+        conn.on('data', handleData);
+    }
+
+    function setupDragAndDrop() {
+        const dropZone = document.getElementById('drop-zone');
+        if(!dropZone) return;
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if(files.length > 0) {
+                document.getElementById('file-input').files = files;
+                startBatchSend();
+            }
+        }, false);
+    }
+
+    // --- DATA HANDLING ---
+    let incomingBuffer = [];
+    let incomingMeta = null;
+    let receivedBytes = 0;
+    let nextFileResolver = null; 
+
+    function handleData(data) {
+        if(data.type === 'ping') conn.send({ type: 'pong', time: data.time });
+        else if(data.type === 'pong') {
+            document.getElementById('disp-ping').innerText = (Date.now() - data.time);
+        }
+        else if(data.type === 'ack-next') {
+            if(nextFileResolver) nextFileResolver();
+        }
+        else if(data.type === 'meta') {
+            incomingMeta = data;
+            incomingBuffer = [];
+            receivedBytes = 0;
+            addToFileList(data.name, data.idx, data.total);
+            document.getElementById('status-text').innerText = `Receiving: ${data.name}`;
+            lastTime = Date.now(); lastBytes = 0; 
+        }
+        else if(data.type === 'chunk') {
+            incomingBuffer.push(data.data);
+            receivedBytes += data.data.byteLength;
+            updateSpeed(receivedBytes, incomingMeta.size);
+
+            if(receivedBytes === incomingMeta.size) saveFile();
+        }
+    }
+
+    // --- SENDER LOGIC ---
+    async function startBatchSend() {
+        const input = document.getElementById('file-input');
+        if(input.files.length === 0) return;
+        
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.style.pointerEvents = 'none';
+        dropZone.style.opacity = '0.5';
+        
+        const listUI = document.getElementById('file-list-ui');
+        listUI.innerHTML = '';
+        const files = Array.from(input.files);
+        files.forEach((f, i) => listUI.innerHTML += `<div class="file-item file-pending" id="f-${i}">${f.name}</div>`);
+
+        for(let i = 0; i < files.length; i++) {
+            const file = files[i];
+            document.getElementById(`f-${i}`).className = "file-item file-active";
+            document.getElementById('status-text').innerText = `Sending: ${file.name}`;
+            
+            await sendSingleFile(file, i + 1, files.length);
+            
+            document.getElementById(`f-${i}`).className = "file-item file-done";
+            document.getElementById(`f-${i}`).innerHTML += " <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>";
+        }
+
+        document.getElementById('status-text').innerText = "All files sent successfully!";
+        document.getElementById('progress').style.width = "100%";
+        document.getElementById('progress').style.background = "var(--green)";
+        
+        setTimeout(() => {
+            dropZone.style.pointerEvents = 'auto';
+            dropZone.style.opacity = '1';
+            document.getElementById('progress').style.width = "0%";
+            document.getElementById('progress').style.background = "linear-gradient(90deg, #3b82f6, #8b5cf6)";
+            input.value = ""; // clear input
+        }, 3000);
+    }
+
+    function sendSingleFile(file, idx, total) {
+        return new Promise((resolve) => {
+            conn.send({ type: 'meta', name: file.name, size: file.size, mime: file.type, idx: idx, total: total });
+
+            const CHUNK_SIZE = 256 * 1024; // Increased to 256KB for faster throughput
+            const LOW_WATER_MARK = 8 * 1024 * 1024; // Increased buffer to 8MB
+            
+            let offset = 0;
+            const reader = new FileReader();
+            lastTime = Date.now(); lastBytes = 0;
+
+            const dc = conn.dataChannel;
+
+            dc.onbufferedamountlow = () => {
+                readNext();
+            };
+            
+            dc.bufferedAmountLowThreshold = 0;
+
+            reader.onload = (e) => {
+                const chunk = e.target.result;
+                conn.send({ type: 'chunk', data: chunk });
+                offset += chunk.byteLength;
+                updateSpeed(offset, file.size);
+
+                if (offset < file.size) {
+                    if (dc.bufferedAmount <= LOW_WATER_MARK) {
+                        readNext();
+                    }
+                } else {
+                    document.getElementById('status-text').innerText = "Finalizing...";
+                    nextFileResolver = resolve;
+                    dc.onbufferedamountlow = null;
+                }
+            };
+
+            const readNext = () => {
+                const slice = file.slice(offset, offset + CHUNK_SIZE);
+                reader.readAsArrayBuffer(slice);
+            };
+
+            readNext();
+        });
+    }
+
+    // --- UTILS ---
+    let lastTime = 0, lastBytes = 0;
+    
+    function updateSpeed(current, total) {
+        const pct = (current/total)*100;
+        document.getElementById('progress').style.width = pct + "%";
+        
+        const now = Date.now();
+        if(now - lastTime >= 500) { 
+            const speed = (current - lastBytes) / (now - lastTime) * 1000 / 1024 / 1024;
+            document.getElementById('disp-speed').innerText = speed.toFixed(1);
+            lastTime = now;
+            lastBytes = current;
+        }
+    }
+
+    function addToFileList(name, idx, total) {
+        const list = document.getElementById('file-list-ui');
+        if(idx === 1) list.innerHTML = '';
+        list.innerHTML += `<div class="file-item file-active">${name}</div>`;
+        list.scrollTop = list.scrollHeight;
+    }
+
+    function saveFile() {
+        const blob = new Blob(incomingBuffer, { type: incomingMeta.mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = incomingMeta.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        conn.send({ type: 'ack-next' });
+    }
+</script>
+
+</body>
+</html>
