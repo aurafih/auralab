@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <title>VaultFit Pro</title>
+    <script>
+        // Apply cached theme ASAP to prevent flash of wrong theme on load
+        try {
+            var t = localStorage.getItem('vf_theme');
+            if (t === 'light' || t === 'dark') {
+                document.documentElement.setAttribute('data-theme', t);
+            }
+        } catch (e) { /* localStorage may be unavailable in private mode */ }
+    </script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="toast" class="toast"><span style="flex-grow:1">Saved!</span></div>
+    <canvas id="confetti" class="hidden"></canvas>
+
+    
+    <div id="v-auth" class="view p-6 center">
+        <h1 class="mb-2">VaultFit Pro <span style="font-size: 14px; color: var(--sub); vertical-align: middle;">V5.2</span></h1>
+        <p class="text-sub mb-8" id="auth-msg">Secure encrypted storage</p>
+        <input type="password" id="pin-input" placeholder="Enter PIN (min 4)" inputmode="numeric" pattern="[0-9]*"
+            class="mb-4 center" style="font-size:24px; letter-spacing:8px;">
+        <button id="btn-auth" class="btn-primary" onclick="Auth.submit()" disabled>Unlock Vault</button>
+        <p id="auth-err" class="text-red mt-4 hidden">Invalid PIN</p>
+    </div>
+
+    
+    <div id="v-main" class="view hidden">
+        <div class="view-scrollable">
+            <div class="flex between align-center mb-6">
+                <h1>Routines</h1>
+                <button class="btn-panel" style="padding: 0 20px; min-height: 48px; font-size: 16px; width: auto;" onclick="App.lock()">Lock</button>
+            </div>
+            <div id="last-workout-banner" class="card hidden" style="background: var(--accent); color: #fff;">
+                <p class="text-sub" style="color: rgba(255,255,255,0.8); font-size: 14px;">Resume Last</p>
+                <div class="flex between align-center mt-2">
+                    <h2 id="last-w-name" style="color: #fff; font-size: 22px;">Leg Day</h2>
+                    <button class="btn-primary" style="width:auto; padding:0 24px; min-height: 48px; background: #fff; color: var(--accent); border-radius: 999px; font-weight: 700; font-size: 16px;"
+                        onclick="Dashboard.resumeLast()">Start</button>
+                </div>
+            </div>
+            <div class="flex between mb-4 mt-2">
+                <h2 class="text-sub" style="font-size:16px; font-weight: 600;">All Routines</h2>
+            </div>
+            <div id="routines-list" class="mb-8"></div>
+            <button class="btn-panel" style="border: 2px dashed var(--border); color: var(--accent); background: transparent; width: 100%; border-radius: 20px;" onclick="Creator.openNew()">+
+                Create Routine</button>
+        </div>
+        <div class="tab-bar">
+            <button class="active" onclick="App.tab('main')"><svg class="icon" viewBox="0 0 24 24"><path d="M6.5 6.5h11M4 12h16M6 12v5a1 1 0 001 1h2a1 1 0 001-1v-5M14 12v5a1 1 0 001 1h2a1 1 0 001-1v-5" stroke-width="2.5"/><circle cx="12" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>Routines</button>
+            <button onclick="App.tab('history')"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 13h2M14 13h2M8 17h2"/></svg>History</button>
+            <button onclick="App.tab('settings')"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
+        </div>
+    </div>
+
+    
+    <div id="v-history" class="view hidden">
+        <div class="view-scrollable">
+            <h1 class="mb-6">History</h1>
+            <div class="bento-grid mb-6">
+                <div class="card center mb-0">
+                    <p class="text-sub" style="font-size:13px; font-weight: 500;">Total Workouts</p>
+                    <h2 id="stat-total-w" style="font-size:42px; color:var(--accent); font-weight:800; margin-top: 4px;">0</h2>
+                </div>
+                <div class="card mb-0 pb-4" id="history-graph-container" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <h3 class="mb-2 text-sub" style="font-size:13px; font-weight: 500; text-align:center;">7 Days Activity</h3>
+                    <div class="flex between align-end w-100" id="history-graph" style="height: 60px; gap: 4px;"></div>
+                </div>
+            </div>
+            <div id="history-list" class="col gap-2"></div>
+        </div>
+        <div class="tab-bar">
+            <button onclick="App.tab('main')"><svg class="icon" viewBox="0 0 24 24"><path d="M6.5 6.5h11M4 12h16M6 12v5a1 1 0 001 1h2a1 1 0 001-1v-5M14 12v5a1 1 0 001 1h2a1 1 0 001-1v-5" stroke-width="2.5"/><circle cx="12" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>Routines</button>
+            <button class="active" onclick="App.tab('history')"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 13h2M14 13h2M8 17h2"/></svg>History</button>
+            <button onclick="App.tab('settings')"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
+        </div>
+    </div>
+
+    
+    <div id="v-settings" class="view hidden">
+        <div class="view-scrollable">
+            <h1 class="mb-6">Settings</h1>
+            <div class="card" style="padding: 0 20px;">
+                <div class="settings-row" style="font-weight: 500; font-size: 17px;">
+                    <span>Dark Theme</span>
+                    <input type="checkbox" id="set-theme" onchange="Settings.toggleTheme()">
+                </div>
+                <div class="settings-row" style="font-weight: 500; font-size: 17px;">
+                    <span>Auto-advance Full Reps</span>
+                    <input type="checkbox" id="set-auto">
+                </div>
+            </div>
+            <h2 class="text-sub mb-2 mt-6">Sync & Migration</h2>
+            <div class="card col gap-2">
+                <button class="btn-primary" onclick="SyncUI.open()"
+                    style="display:flex; align-items:center; justify-content:center; gap:8px;"><svg class="icon" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Sync / Migrate
+                    Data</button>
+                <p class="text-sub" style="font-size:12px; text-align:center; padding: 4px 8px;">Transfer data between
+                    devices using peer-to-peer WebRTC</p>
+            </div>
+            <h2 class="text-sub mb-2 mt-6">Data &amp; Advanced</h2>
+            <div class="card col gap-2">
+                <button class="btn-panel" onclick="Settings.export()">Export Backup (.json)</button>
+                <button class="btn-panel" onclick="document.getElementById('import-file').click()">Import
+                    Backup</button>
+                <input type="file" id="import-file" class="hidden" accept=".json" onchange="Settings.import(event)">
+                <button class="btn-danger mt-2" onclick="Settings.reset()">Wipe Device Data</button>
+            </div>
+            <p class="text-sub mt-6 mb-2" style="font-size:12px; text-align:center;">App Version: V5.2</p>
+        </div>
+        <div class="tab-bar">
+            <button onclick="App.tab('main')"><svg class="icon" viewBox="0 0 24 24"><path d="M6.5 6.5h11M4 12h16M6 12v5a1 1 0 001 1h2a1 1 0 001-1v-5M14 12v5a1 1 0 001 1h2a1 1 0 001-1v-5" stroke-width="2.5"/><circle cx="12" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>Routines</button>
+            <button onclick="App.tab('history')"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 13h2M14 13h2M8 17h2"/></svg>History</button>
+            <button class="active" onclick="App.tab('settings')"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
+        </div>
+    </div>
+
+    
+    <div id="v-create" class="view hidden">
+        <div class="flex between align-center p-4"
+            style="border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0;">
+            <button onclick="Creator.cancel()" class="text-sub" style="padding:8px">Cancel</button>
+            <h2 id="cr-title">New Routine</h2>
+            <button onclick="Creator.save()" class="text-accent" style="padding:8px">Save</button>
+        </div>
+        <div class="view-scrollable" style="padding-bottom: 32px;">
+            <input type="text" id="cr-name" placeholder="Routine Name (e.g. Push Day)" class="mb-4">
+            <div class="card mb-6" style="background:var(--bg)">
+                <h3 class="mb-4">Quick Add Exercise</h3>
+                <input type="text" id="cr-ex-name" placeholder="Exercise Name" class="mb-2">
+                <div class="flex gap-2 mb-2">
+                    <select id="cr-ex-type" onchange="Creator.typeChange()">
+                        <option value="reps">Reps</option>
+                        <option value="time">Time (Hold)</option>
+                    </select>
+                    <input type="number" id="cr-ex-rest" placeholder="Rest(s)" value="60">
+                </div>
+                <div class="flex gap-2 mb-4">
+                    <input type="number" id="cr-ex-sets" placeholder="Sets" value="3">
+                    <input type="number" id="cr-ex-target" placeholder="Reps Target" value="10">
+                </div>
+                <button class="btn-primary" onclick="Creator.addEx()">Add to Playlist +</button>
+            </div>
+            <div class="flex between align-center mb-2">
+                <h3 class="text-sub">Playlist</h3>
+                <span class="text-sub" id="cr-ex-count" style="font-size:12px;">0 Items</span>
+            </div>
+            <div id="cr-list" class="col gap-2"></div>
+
+            <button id="btn-del-routine" class="btn-danger mt-8 hidden" onclick="Creator.delRoutine()">Delete
+                Routine</button>
+        </div>
+    </div>
+
+    
+    <div id="v-active" class="view hidden" style="background:var(--bg); color:var(--text)">
+        <div class="flex between align-center p-4">
+            <button onclick="Active.quit()" class="text-sub" style="padding:8px; font-weight:500; display:flex; align-items:center; gap:4px;"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg> Quit</button>
+            <div class="center pointer" onclick="PlateCalc.open()"
+                style="font-size:13px; font-weight:500; background:var(--panel); border-radius:24px; padding:6px 16px; color:var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.1); display:flex; align-items:center; gap:6px;">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="3"/></svg> Plates</div>
+            <div class="flex gap-2">
+                <button onclick="Active.prev()" class="text-accent" style="padding:8px; font-weight:500;"><svg class="icon" viewBox="0 0 24 24"><path d="M19 20L9 12l10-8v16zM5 4v16"/></svg></button>
+                <button onclick="Active.skip()" class="text-accent" style="padding:8px; font-weight:500;"><svg class="icon" viewBox="0 0 24 24"><path d="M5 4l10 8-10 8V4zM19 4v16"/></svg></button>
+            </div>
+        </div>
+        <div class="center mt-2">
+            <div class="text-sub" style="font-size:11px; letter-spacing:2px; margin-bottom:2px; font-weight:600;">WORKOUT TIME</div>
+            <div id="act-stopwatch" style="font-variant-numeric: tabular-nums; font-size:18px; font-weight:bold; color:var(--text)">00:00</div>
+        </div>
+        <div class="p-6 col center flex-grow">
+            <h1 id="act-name" class="mt-4" style="font-size:36px; margin-bottom:8px">Squats</h1>
+            <p class="text-accent" style="font-size:20px; font-weight:600;">Set <span
+                    id="act-set">1</span> of <span id="act-max-sets">3</span></p>
+
+            <div class="circle-wrap" id="act-clicker">
+                <div class="circle-bg" id="act-counter" oncontextmenu="return false;">0</div>
+                <svg class="timer-ring" viewBox="0 0 260 260">
+                    <circle class="progress" id="act-ring" cx="130" cy="130" r="126" />
+                </svg>
+                <div class="text-sub pointer"
+                    style="position:absolute; bottom:-30px; width:100%; text-align:center; z-index:5;">Tap to Count</div>
+            </div>
+            <button class="btn-panel mt-4" style="padding:8px 24px; font-size:14px; min-height:0; border-radius:12px; font-weight:600;" onclick="Active.reset()">Reset</button>
+
+            <p class="text-sub mt-8 mb-2" style="font-size:18px">Target: <span id="act-target"
+                    style="color:var(--text); font-weight:bold">10</span> <span id="act-unit">Reps</span></p>
+            <div class="flex center align-center gap-4 text-sub mb-4"
+                style="background:var(--panel); border-radius:24px; padding:6px; width:100%; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                <button onclick="Active.adjRest(-15)" class="pointer"
+                    style="padding:6px 16px; font-weight:500; font-size:14px; color:var(--text)">-15s</button>
+                <div style="font-size:14px; width:80px; text-align:center; font-weight:500;">Rest: <span id="act-rest-val"
+                        style="color:var(--accent); font-weight:bold">60</span>s</div>
+                <button onclick="Active.adjRest(15)" class="pointer"
+                    style="padding:6px 16px; font-weight:500; font-size:14px; color:var(--text)">+15s</button>
+            </div>
+        </div>
+        <div class="flex gap-4 p-6" style="padding-bottom: max(24px, env(safe-area-inset-bottom)); background:var(--bg)">
+            <button style="width:80px; font-size:28px; background:var(--panel); border-radius:24px; color:var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.1);" onclick="Active.decrement()">-</button>
+            <button class="btn-success"
+                style="font-size:18px; font-weight:700; letter-spacing:0.5px; border-radius:24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"
+                onclick="Active.finishSet()">Finish Set</button>
+        </div>
+    </div>
+
+    
+    <div id="v-rest" class="overlay hidden">
+        <h2 class="text-sub mb-6 uppercase tracking-widest" style="font-size:14px; font-weight:600;">Resting</h2>
+        <div class="circle-wrap" style="transform:scale(1.1); margin: 20px 0;">
+            <svg class="timer-ring" viewBox="0 0 260 260">
+                <circle class="progress" id="rest-ring" cx="130" cy="130" r="126" stroke="#C8C8CC" />
+            </svg>
+            <div class="circle-bg" style="background:rgba(30,30,30,0.6); backdrop-filter:blur(10px); color:#fff; box-shadow:0 8px 32px rgba(0,0,0,0.3);" id="rest-counter">
+                60</div>
+        </div>
+        <p class="text-sub mt-8 mb-2 uppercase tracking-widest" style="font-size:12px; font-weight:600;">Up Next</p>
+        <h2 id="rest-next" class="mb-10 text-center" style="color:#fff; font-size:28px; padding: 0 20px;">Next Ex</h2>
+        <div class="flex gap-4">
+            <button style="width:80px; font-size:16px; background:rgba(255,255,255,0.1); border-radius:24px; color:#fff;" onclick="Rest.adjust(-15)">-15s</button>
+            <button class="btn-success" id="btn-rest-pause"
+                style="padding: 16px 20px; border-radius:24px; font-size:18px; font-weight:700; background:var(--yellow); color:#000;"
+                onclick="Rest.togglePause()">Pause</button>
+            <button class="btn-success"
+                style="padding: 16px 20px; border-radius:24px; font-size:18px; font-weight:700;"
+                onclick="Rest.skip()">Skip</button>
+            <button style="width:80px; font-size:16px; background:rgba(255,255,255,0.1); border-radius:24px; color:#fff;" onclick="Rest.adjust(15)">+15s</button>
+        </div>
+        <button class="btn-panel mt-6" style="background:rgba(255,255,255,0.1); color:#fff; font-size:14px; padding:10px 24px; min-height:0; border-radius:16px; font-weight:600; width:100%; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.15); display:flex; align-items:center; justify-content:center; gap:6px;" onclick="Active.undoLastSet()"><svg class="icon icon-sm" viewBox="0 0 24 24" style="stroke:#fff"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Undo Last Set</button>
+    </div>
+
+    
+    <div id="v-plates" class="overlay hidden" style="z-index: 150">
+        <div class="card col w-100" style="max-width:320px; padding: 24px;">
+            <div class="flex between align-center mb-4">
+                <h2>Plate Calculator</h2>
+                <button class="text-red pointer" onclick="$('v-plates').classList.add('hidden')"
+                    style="padding:4px"><svg class="icon icon-sm" viewBox="0 0 24 24" style="stroke:var(--red)"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <p class="text-sub mb-4" style="font-size:14px">Calculate plates per side for standard bar.</p>
+            <div class="flex gap-2 mb-4">
+                <input type="number" id="pc-target" placeholder="Target (kg)" value="" oninput="PlateCalc.calc()">
+                <input type="number" id="pc-bar" placeholder="Bar (kg)" value="20" style="width:80px"
+                    oninput="PlateCalc.calc()">
+            </div>
+            <div id="pc-result" class="col gap-2 center" style="min-height: 60px;"></div>
+        </div>
+    </div>
+
+    
+    <div id="v-sync" class="view hidden" style="z-index: 80;">
+        <div class="flex between align-center p-4"
+            style="border-bottom: 1px solid var(--border); background: var(--panel);">
+            <button onclick="SyncUI.close()" class="text-sub" style="padding:8px">← Back</button>
+            <h2>Sync & Migrate</h2>
+            <div style="width:48px"></div>
+        </div>
+        <div id="sync-content" style="flex:1; overflow-y:auto;"></div>
+    </div>
+
+    
+    <div id="modal" class="overlay hidden" style="z-index: 500">
+        <div class="card center" style="width:80%; max-width:320px; padding: 24px;">
+            <h2 id="mdl-title" class="mb-4">Confirm</h2>
+            <p id="mdl-msg" class="text-sub mb-8" style="font-size:16px; line-height:1.4;">Are you sure?</p>
+            <div class="flex gap-4 w-100">
+                <button class="btn-panel" id="mdl-no" style="flex:1">Cancel</button>
+                <button class="btn-danger" id="mdl-yes" style="flex:1">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+
+</html>
